@@ -3,6 +3,7 @@ from rest_framework.views import APIView
 from rest_framework import status, permissions
 from rest_framework.permissions import IsAuthenticated
 from rest_framework_simplejwt.tokens import RefreshToken
+from django.db import models
 
 from rest_framework.permissions import AllowAny
 from django.db.models import Avg, Count                    #평균 ,수
