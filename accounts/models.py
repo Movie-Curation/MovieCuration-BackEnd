@@ -2,6 +2,8 @@ from django.db import models
 from django.conf import settings
 from django.contrib.auth.models import AbstractBaseUser, BaseUserManager, PermissionsMixin
 
+from kobis.models import Movie
+from tmdb.models import Genre
 
 class UserManager(BaseUserManager):
     def create_user(self, userid, email, name, gender, preference, nickname, password=None):
@@ -51,7 +53,7 @@ class User(AbstractBaseUser, PermissionsMixin):
     email = models.EmailField(max_length=100, unique=True)
     name = models.CharField(max_length=50)
     gender = models.CharField(max_length=1, choices=GENDER_CHOICES)
-    preference = models.CharField(max_length=255)
+    preference = models.ManyToManyField(Genre, related_name="preferred_by", blank=True)
     nickname = models.CharField(max_length=50, unique=True)
 
     is_active = models.BooleanField(default=True)
@@ -77,7 +79,7 @@ class User(AbstractBaseUser, PermissionsMixin):
 
 class Review(models.Model):
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
-    movie_id = models.IntegerField()
+    movie_id = models.ForeignKey(Movie, on_delete=models.CASCADE, related_name='reviews')
     rating = models.FloatField(default=10.0)  # 별점 (0.0 ~ 10.0)
     comment = models.TextField(blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -127,19 +129,19 @@ class ReviewReport(models.Model):                #리뷰 신고 기능
     def __str__(self):
         return f"Report by {self.user.username} on Review {self.review.id}"
     
-class Movie(models.Model):
-    title = models.CharField(max_length=255)
-    genre = models.CharField(max_length=255)
-    release_year = models.IntegerField(null=True, blank=True) 
-    director = models.CharField(max_length=255, null=True, blank=True)  
-    description = models.TextField(null=True, blank=True)  
+# class Movie(models.Model):
+#     title = models.CharField(max_length=255)
+#     genre = models.CharField(max_length=255)
+#     release_year = models.IntegerField(null=True, blank=True) 
+#     director = models.CharField(max_length=255, null=True, blank=True)  
+#     description = models.TextField(null=True, blank=True)  
 
-    def __str__(self):
-        return self.title
+#     def __str__(self):
+#         return self.title
 
 class Favorite(models.Model):
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="favorites")
-    movie_id = models.IntegerField()
+    movie_id = models.ForeignKey(Movie, on_delete=models.CASCADE, related_name='favorites')
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:

@@ -42,6 +42,9 @@ urlpatterns = [
     # 팔로우 관련 엔드포인트
     path('following/', FollowingListView.as_view(), name='following-list'),
     path('followers/', FollowersListView.as_view(), name='followers-list'),
+
+    # kobis 앱 URL 포함
+    path('movie/', include('kobis.urls')),
 ]
 
 if settings.DEBUG:  # DEBUG 모드일 때만 활성화

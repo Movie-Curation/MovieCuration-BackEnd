@@ -11,7 +11,8 @@ https://docs.djangoproject.com/en/5.0/ref/settings/
 """
 
 from pathlib import Path
-from datetime import timedelta #JWT 로그인/로그아웃기능 설정 
+from datetime import timedelta #JWT 로그인/로그아웃기능 설정
+from decouple import config
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -52,6 +53,8 @@ INSTALLED_APPS = [
     #추가
     'rest_framework',
     'accounts',        #기본 내 프로젝트
+    'kobis',
+    'tmdb',
     'corsheaders', #프론트엔드 통신
     'rest_framework_simplejwt.token_blacklist',   #블랙리스트 기능
     'drf_yasg',  #스웨거 사용 
@@ -62,8 +65,12 @@ INSTALLED_APPS = [
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
         'rest_framework_simplejwt.authentication.JWTAuthentication',
-    ),
-}                                                                    #프레임워크 로그인/로그아웃기능 
+    ), #프레임워크 로그인/로그아웃기능
+
+    # 페이지네이션을 위한 설정
+    'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
+    'PAGE_SIZE': 12,  # 한 페이지당 12개의 항목
+}                                                                     
 
 
 MIDDLEWARE = [
@@ -179,3 +186,12 @@ STATIC_URL = 'static/'
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 STATIC_ROOT = BASE_DIR / "static"  # 배포 환경에서 collectstatic 명령어로 파일이 저장됨
+
+
+# KOBIS API 설정
+KOBIS_API_KEY = 'f0bbda432fe7324b506a3497b1503048'
+KOBIS_API_BASE_URL = 'http://www.kobis.or.kr/kobisopenapi/webservice/rest'
+
+# TMDB API 설정
+TMDB_BEARER_TOKEN = config('TMDB_BEARER_TOKEN')
+TMDB_API_BASE_URL = 'https://api.themoviedb.org/3'
