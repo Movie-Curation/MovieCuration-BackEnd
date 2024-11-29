@@ -1,0 +1,173 @@
+from django.db import models
+from django.conf import settings
+from django.contrib.auth.models import AbstractBaseUser, BaseUserManager, PermissionsMixin
+
+from kobis.models import Movie
+from tmdb.models import Genre
+
+class UserManager(BaseUserManager):
+    def create_user(self, userid, email, name, gender, preference, nickname, password=None):
+        if not email:
+            raise ValueError("Users must have an email address")
+        if not userid:
+            raise ValueError("Users must have a userid")
+
+        user = self.model(
+            userid=userid,
+            email=self.normalize_email(email),
+            name=name,
+            gender=gender,
+            preference=preference,
+            nickname=nickname,
+        )
+        user.set_password(password)
+        user.save(using=self._db)
+        return user
+
+    def create_superuser(self, userid, email, name, gender, preference, nickname, password=None):
+        user = self.create_user(
+            userid=userid,
+            email=email,
+            name=name,
+            gender=gender,
+            preference=preference,
+            nickname=nickname,
+            password=password,
+        )
+        user.is_admin = True
+        user.is_staff = True
+        user.is_superuser = True
+        user.save(using=self._db)
+        return user
+
+
+class User(AbstractBaseUser, PermissionsMixin):
+    GENDER_CHOICES = (
+        ('M', 'Male'),
+        ('F', 'Female'),
+        ('O', 'Other'),
+    )
+
+    userid = models.CharField(max_length=50, unique=True)
+    password = models.CharField(max_length=255)
+    email = models.EmailField(max_length=100, unique=True)
+    name = models.CharField(max_length=50)
+    gender = models.CharField(max_length=1, choices=GENDER_CHOICES)
+    preference = models.ManyToManyField(Genre, related_name="preferred_by", blank=True)
+    nickname = models.CharField(max_length=50, unique=True)
+
+    is_active = models.BooleanField(default=True)
+    is_admin = models.BooleanField(default=False)
+    is_staff = models.BooleanField(default=False)  # Django's built-in staff flag
+    is_expert = models.BooleanField(default=False)  # 전문가 여부 추가
+    is_superuser = models.BooleanField(default=False)  # Django's built-in superuser flag
+
+    objects = UserManager()
+
+    USERNAME_FIELD = 'userid'
+    REQUIRED_FIELDS = ['email', 'name', 'gender', 'preference', 'nickname']
+
+    def __str__(self):
+        return self.userid
+
+    def has_perm(self, perm, obj=None):
+        return True
+
+    def has_module_perms(self, app_label):
+        return True
+
+
+class Review(models.Model):
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    movie_id = models.ForeignKey(Movie, on_delete=models.CASCADE, related_name='reviews')
+    rating = models.FloatField(default=10.0)  # 별점 (0.0 ~ 10.0)
+    comment = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    is_expert_review = models.BooleanField(default=False)  # 전문가 리뷰 여부
+
+    def __str__(self):
+        return f"{self.user.nickname} - {self.movie_id} - {self.rating}"
+
+
+class ReviewReaction(models.Model):
+    LIKE = 'like'
+    DISLIKE = 'dislike'
+
+    REACTION_CHOICES = [
+        (LIKE, 'Like'),
+        (DISLIKE, 'Dislike'),
+    ]
+
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    review = models.ForeignKey('Review', on_delete=models.CASCADE, related_name='reactions')
+    reaction = models.CharField(max_length=10, choices=REACTION_CHOICES)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ('user', 'review')
+
+    def __str__(self):
+        return f"{self.user.nickname} reacted {self.reaction} to Review {self.review.id}"
+
+
+class ReviewReport(models.Model):                #리뷰 신고 기능
+    REVIEW_REPORT_REASONS = [
+        ('spam', 'Spam or misleading'),
+        ('hate', 'Hate speech or abusive content'),
+        ('violence', 'Violence or dangerous acts'),
+        ('other', 'Other'),
+    ]
+
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)  # 신고한 사용자
+    review = models.ForeignKey('Review', on_delete=models.CASCADE, related_name='reports')  # 신고된 리뷰
+    reason = models.CharField(max_length=50, choices=REVIEW_REPORT_REASONS)  # 신고 이유
+    description = models.TextField(blank=True)  # 상세 설명
+    created_at = models.DateTimeField(auto_now_add=True)  # 신고 날짜
+    resolved = models.BooleanField(default=False)  # 신고 처리 여부
+
+    def __str__(self):
+        return f"Report by {self.user.username} on Review {self.review.id}"
+    
+# class Movie(models.Model):
+#     title = models.CharField(max_length=255)
+#     genre = models.CharField(max_length=255)
+#     release_year = models.IntegerField(null=True, blank=True) 
+#     director = models.CharField(max_length=255, null=True, blank=True)  
+#     description = models.TextField(null=True, blank=True)  
+
+#     def __str__(self):
+#         return self.title
+
+class Favorite(models.Model):
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="favorites")
+    movie_id = models.ForeignKey(Movie, on_delete=models.CASCADE, related_name='favorites')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ('user', 'movie_id')
+
+    def __str__(self):
+        return f"{self.user.nickname} - Movie ID {self.movie_id}"
+    
+class Comment(models.Model):
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)  # 댓글 작성자
+    review = models.ForeignKey('Review', on_delete=models.CASCADE, related_name='comments')  # 연결된 리뷰
+    content = models.TextField()  # 댓글 내용
+    created_at = models.DateTimeField(auto_now_add=True)  # 댓글 작성 시간
+    updated_at = models.DateTimeField(auto_now=True)  # 댓글 수정 시간
+
+    def __str__(self):
+        return f"Comment by {self.user.username} on Review {self.review.id}"
+
+
+class Follow(models.Model):
+    from_user = models.ForeignKey(settings.AUTH_USER_MODEL, related_name="following", on_delete=models.CASCADE)
+    to_user = models.ForeignKey(settings.AUTH_USER_MODEL, related_name="followers", on_delete=models.CASCADE)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ('from_user', 'to_user')
+
+    def __str__(self):
+        return f"{self.from_user.nickname} follows {self.to_user.nickname}"
