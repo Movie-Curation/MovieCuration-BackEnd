@@ -91,9 +91,11 @@ class FavoriteSerializer(serializers.ModelSerializer):
 
 
 class MovieSerializer(serializers.ModelSerializer):
+    genres = serializers.StringRelatedField(many=True)  # 장르를 문자열로 반환 (필요 시 수정)
+
     class Meta:
         model = Movie
-        fields = ['id', 'title', 'genre', 'release_year', 'director', 'description']
+        fields = ['id', 'vote_average', 'genres', 'movieNm']  # 필요한 필드 추가
 
 
 class ReviewStatisticsSerializer(serializers.Serializer):
