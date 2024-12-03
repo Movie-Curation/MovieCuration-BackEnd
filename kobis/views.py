@@ -5,6 +5,7 @@ from rest_framework.response import Response
 from rest_framework import status
 from django.conf import settings
 import requests
+from django.utils import timezone
 from datetime import datetime, timedelta
 from django.core.cache import cache
 from django.db.models import Q
@@ -349,9 +350,10 @@ export default FilteredAndSortedMovies;
 
 '''
 
+
+
 class MovieSearchAPIView(APIView):
     """
-    
     < 영화 제목으로 검색하는 API >
     엔드포인트: (/api/search/movies/)
     
@@ -377,8 +379,46 @@ class MovieSearchAPIView(APIView):
         return Response(result, status=status.HTTP_200_OK)
 
 
-class RecentlyUpdatedMovieView(APIView):
+class RecentMoviesAPIView(APIView):
     """
 
-    
+    최근 3일간 추가된 영화 목록을 반환하는 API 뷰입니다.
+
+    - 영화 제목: kobis.movieNm
+    - 감독: kobis.director
+    - 추가된 날짜: tmdb.created_at
     """
+
+    def get(self, request, format=None):
+        try:
+            seven_days_ago = timezone.now() - timedelta(days=3) # N일 내에 추가된 영화
+            
+            # 최근 7일간 추가된 TmdbMovie 객체들을 필터링
+            tmdb_movies = TmdbMovie.objects.filter(created_at__gte=seven_days_ago).prefetch_related(
+                'kobis_movie',  # 역참조 관계는 prefetch_related 사용
+                'genres',
+                'production_companies',
+                'production_countries',
+                'spoken_languages',
+                'cast__person',
+                'crew__person',
+                'plot',
+            ).order_by('-created_at')
+            
+            # 데이터를 'tmdb'와 'kobis' 키로 구성
+            movie_list = []
+            for tmdb_movie in tmdb_movies:
+                kobis_movie = tmdb_movie.kobis_movie.first()  # 첫 번째 Movie 객체 가져오기
+                movie_data = {
+                    'tmdb': tmdb_movie,
+                    'kobis': kobis_movie
+                }
+                movie_list.append(movie_data)
+            
+            # 시리얼라이즈
+            serializer = MovieDetailSerializer(movie_list, many=True)
+            
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        
+        except Exception as e:
+            return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
