@@ -64,8 +64,6 @@ class LogoutAPIView(APIView):
 
 
 class RegisterUserAPIView(APIView):
-    
-   
     @swagger_auto_schema(
         request_body=UserRegisterSerializer,
         responses={
@@ -74,35 +72,35 @@ class RegisterUserAPIView(APIView):
         },
     )
     def post(self, request):
-
         """
         새로운 사용자 등록.
 
         신규 유저를 회원으로 등록합니다.
         """
-        
-        
         serializer = UserRegisterSerializer(data=request.data)
         if serializer.is_valid():
             serializer.save()
             return Response({"message": "User registered successfully."}, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-
 class UserProfileUpdateView(APIView):
-    
     permission_classes = [IsAuthenticated]
 
     def put(self, request):
         """
         사용자 프로필 업데이트
 
-        사용자의 프로필 정보를 수정합니다
+        사용자의 프로필 정보를 수정합니다.
         """
         user = request.user
+        genres = request.data.pop("genres", None)  # genres를 별도로 처리
         serializer = UserProfileSerializer(user, data=request.data, partial=True)
         if serializer.is_valid():
             serializer.save()
+
+            # ManyToManyField 갱신
+            if genres is not None:
+                user.genres.set(genres)  # 새로운 장르 리스트로 설정
             return Response(serializer.data, status=status.HTTP_200_OK)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     
@@ -871,14 +869,10 @@ class MovieDetailAPIView(APIView):
         serializer = MovieSerializer(movie)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
-
-
-
 class UserProfileView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-
         """
         사용자 프로필 조회
 
@@ -890,14 +884,13 @@ class UserProfileView(APIView):
             "email": user.email,
             "name": user.name,
             "gender": user.gender,
-            "preference": user.preference,
+            "genres": list(user.genres.values("id", "name")),  # genres로 수정
             "nickname": user.nickname,
         }
         return Response(
             {"message": "User profile retrieved successfully.", "data": user_data},
             status=status.HTTP_200_OK,
         )
-    
 
 def generate_diagram(request):
 
