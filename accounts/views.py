@@ -18,7 +18,7 @@ from drf_yasg.utils import swagger_auto_schema
 from .models import Comment                                #댓글기능
 from .serializer import CommentSerializer
 from .serializer import ReviewSerializer                   #리뷰 직렬화 추가
-from .models import Movie
+from .models import Movie , TmdbMovie
 from .serializer import MovieSerializer  #영화 불러오기
 
 from .models import ReviewReaction
@@ -199,7 +199,6 @@ class ReviewCreateAPIView(APIView):
                 'movie_id': openapi.Schema(type=openapi.TYPE_INTEGER, description='영화 ID'),
                 'rating': openapi.Schema(type=openapi.TYPE_NUMBER, format='float', description='평점 (0.0 ~ 10.0)'),
                 'comment': openapi.Schema(type=openapi.TYPE_STRING, description='리뷰 내용 (선택)'),
-                'is_expert_review': openapi.Schema(type=openapi.TYPE_BOOLEAN, description='전문가 리뷰 여부 (선택)'),
             },
             required=['movie_id', 'rating'],  # 필수 필드
         ),
@@ -212,24 +211,36 @@ class ReviewCreateAPIView(APIView):
         """
         리뷰 작성.
 
-        영화에 대한 새로운 리뷰를 작성합니다.
+        특정 영화(TMDB ID)에 대한 리뷰를 작성합니다.
         """
+        # 영화 ID 가져오기
         movie_id = request.data.get("movie_id")
         if not movie_id:
             return Response({"error": "movie_id is required"}, status=status.HTTP_400_BAD_REQUEST)
 
-        # 중복 리뷰 방지
-        if Review.objects.filter(user=request.user, movie_id=movie_id).exists():
+        # 영화 객체 확인 (영화가 없으면 404 반환)
+        movie = get_object_or_404(Movie, id=movie_id)
+        if not movie.tmdb:
+            return Response({"error": "TMDB data is missing for this movie."}, status=status.HTTP_404_NOT_FOUND)
+
+        # 유저가 이미 리뷰를 작성했는지 확인
+        if Review.objects.filter(user=request.user, movie=movie).exists():
             return Response({"error": "You have already reviewed this movie."}, status=status.HTTP_400_BAD_REQUEST)
 
-        serializer = ReviewSerializer(data=request.data)
+        # 리뷰 데이터 생성
+        review_data = {
+            "movie_id": movie.id,
+            "rating": request.data.get("rating"),
+            "comment": request.data.get("comment", ""),  # 댓글은 선택 사항
+        }
+
+        # 리뷰 저장
+        serializer = ReviewSerializer(data=review_data)
         if serializer.is_valid():
-            # user를 추가하고 movie_id를 저장
-            serializer.save(user=request.user)
+            serializer.save(user=request.user, movie=movie)  # user와 movie 관계 저장
             return Response(serializer.data, status=status.HTTP_201_CREATED)
 
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
 class ReviewUpdateAPIView(APIView):           #리뷰  평점,댓글 수정
     
     permission_classes = [IsAuthenticated]
