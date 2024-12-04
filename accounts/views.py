@@ -5,6 +5,8 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework_simplejwt.tokens import RefreshToken
 from django.db import models
 
+from rest_framework_simplejwt.authentication import JWTAuthentication  #로그인 체크인증
+
 from rest_framework.permissions import AllowAny
 from django.db.models import Avg, Count                    #평균 ,수
 from .serializer import ReviewStatisticsSerializer         #평균 별점
@@ -82,6 +84,26 @@ class RegisterUserAPIView(APIView):
             serializer.save()
             return Response({"message": "User registered successfully."}, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    
+
+class CheckLoginAPIView(APIView):
+    """
+    현재 사용자의 로그인 상태를 확인하는 API.
+    """
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        user = request.user
+        return Response({
+            "is_logged_in": True,
+            "user": {
+                "username": user.username,
+                "email": user.email,
+            },
+            "is_admin": user.is_staff,
+        })
+
 
 class UserProfileUpdateView(APIView):
     permission_classes = [IsAuthenticated]

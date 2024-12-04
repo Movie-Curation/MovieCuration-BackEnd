@@ -2,6 +2,7 @@ from django.urls import path
 from movieinfo.views import ReviewReportManagementAPIView #리뷰신고는 movieinfo/urls.py에서 지정했기 때문임
 from .views import PromoteToExpertAPIView,GitFlowDiagramAPIView # 관리자 좋아요100개 지정
 from .views import MovieListAPIView, MovieDetailAPIView
+from .views import CheckLoginAPIView
 from .views import generate_diagram
 from .views import (
     RegisterUserAPIView, 
@@ -32,6 +33,8 @@ urlpatterns = [
     path('register/', RegisterUserAPIView.as_view(), name='register'),  # 회원가입
     path('profile/', UserProfileView.as_view(), name='profile'),  # 프로필 조회
     path('profile/update/', UserProfileUpdateView.as_view(), name='profile_update'),  # 프로필 수정
+
+     path('auth/check-login/', CheckLoginAPIView.as_view(), name='check-login'),   #로그인 확인
 
     # 로그아웃
     path('logout/', LogoutAPIView.as_view(), name='logout'),  # 로그아웃
