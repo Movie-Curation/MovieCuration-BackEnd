@@ -23,6 +23,7 @@ class FollowersListView(ListAPIView):
     def get_queryset(self):
         return Follow.objects.filter(to_user=self.request.user)
 
+
 # 관리자 리뷰 신고 관리
 class ReviewReportManagementAPIView(APIView):
     """
