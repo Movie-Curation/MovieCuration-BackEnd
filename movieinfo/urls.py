@@ -45,6 +45,9 @@ urlpatterns = [
 
     # kobis 앱 URL 포함
     path('movie/', include('kobis.urls')),
+
+    # ai 앱 url 포함
+    path('ai/', include('ai.urls')),
 ]
 
 if settings.DEBUG:  # DEBUG 모드일 때만 활성화

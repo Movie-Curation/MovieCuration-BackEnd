@@ -1,9 +1,11 @@
 from rest_framework.views import APIView
 from rest_framework.generics import ListAPIView
+from rest_framework.pagination import PageNumberPagination
 from rest_framework.response import Response
 from rest_framework import status
 from django.conf import settings
 import requests
+from django.utils import timezone
 from datetime import datetime, timedelta
 from django.core.cache import cache
 from django.db.models import Q
@@ -66,6 +68,10 @@ class BoxOfficeBannerAPIView(APIView):
     - 제작연도: 'kobis.prdtYear'
     - 국가: 'kobis.nationNm'
     - 포스터: 'tmdb.poster_url'
+    ================================================================================
+    - 아직 정보가 갱신되지 않아서 출력되지 않는 영화는 이미지가 None으로 출력됩니다.
+    - 그 외의 데이터는 캐시에서 가져오므로 같은 변수명을 사용해도 출력됩니다.
+    - 없는 정보는 '준비 중'으로 표시됩니다.
     '''
     
     def get(self, request):
@@ -77,12 +83,25 @@ class BoxOfficeBannerAPIView(APIView):
         result = []
         for movie in box_office_data[:10]:  # 상위 10개만 처리
             try:
+                # Movie 객체를 가져옴
                 kobis_movie = Movie.objects.get(movieCd=movie['movieCd'])
                 tmdb_movie = kobis_movie.tmdb_movie
                 serializer = MovieDetailSerializer({'kobis': kobis_movie, 'tmdb': tmdb_movie})
                 result.append(serializer.data)
             except Movie.DoesNotExist:
-                result.append({'movieCd': movie['movieCd'], 'message': 'No detailed information available'})
+                # Movie 데이터가 없을 경우 캐싱된 박스오피스 정보를 반환
+                result.append({
+                    'kobis': {
+                        'movieCd': movie['movieCd'],
+                        'movieNm': movie.get('movieNm', '준비 중'),
+                        'prdtYear': movie.get('prdtYear', '준비 중'),
+                        'nationNm': movie.get('nationNm', '준비 중')
+                    },
+                    'tmdb': {
+                        'poster_url': None,
+                        'message': 'DB 내부에 정보 없음'
+                    }
+                })
 
         return Response(result, status=status.HTTP_200_OK)
 
@@ -147,7 +166,7 @@ class SimilarMoviesAPIView(APIView):
     특정 영화와 장르가 겹치는 영화 목록을 반환하며 페이지네이션을 지원합니다.
     엔드포인트: 
     /api/movies/<str:movieCd>/similar/ (기본값: ?page=1)
-    /api/movies/<str:movieCd>/similar/?page=1&page_size=5 (한 페이지에 출력할 갯수 조절 가능)
+    /api/movies/<str:movieCd>/similar/?page=1&page_size=12 (한 페이지에 출력할 갯수 조절 가능)
     """
     def get(self, request, movieCd):
         try:
@@ -165,13 +184,18 @@ class SimilarMoviesAPIView(APIView):
             else:
                 similar_movies = Movie.objects.none()  # TMDB 장르가 없으면 빈 결과 반환
 
+            # 페이지네이터 설정
+            paginator = PageNumberPagination()
+            paginator.page_size = request.query_params.get('page_size', 12)  # 기본값: 12
+            paginated_movies = paginator.paginate_queryset(similar_movies, request)
+
             # 데이터 직렬화
             result = [
                 MovieDetailSerializer({'kobis': movie, 'tmdb': movie.tmdb_movie}).data
-                for movie in similar_movies
+                for movie in paginated_movies
             ]
 
-            return Response(result, status=status.HTTP_200_OK)
+            return paginator.get_paginated_response(result)
         
         except Movie.DoesNotExist:
             return Response({'error': 'Movie not found'}, status=status.HTTP_404_NOT_FOUND)
@@ -326,9 +350,10 @@ export default FilteredAndSortedMovies;
 
 '''
 
+
+
 class MovieSearchAPIView(APIView):
     """
-    
     < 영화 제목으로 검색하는 API >
     엔드포인트: (/api/search/movies/)
     
@@ -352,3 +377,48 @@ class MovieSearchAPIView(APIView):
         ]
 
         return Response(result, status=status.HTTP_200_OK)
+
+
+class RecentMoviesAPIView(APIView):
+    """
+
+    최근 3일간 추가된 영화 목록을 반환하는 API 뷰입니다.
+
+    - 영화 제목: kobis.movieNm
+    - 감독: kobis.director
+    - 추가된 날짜: tmdb.created_at
+    """
+
+    def get(self, request, format=None):
+        try:
+            seven_days_ago = timezone.now() - timedelta(days=3) # N일 내에 추가된 영화
+            
+            # 최근 7일간 추가된 TmdbMovie 객체들을 필터링
+            tmdb_movies = TmdbMovie.objects.filter(created_at__gte=seven_days_ago).prefetch_related(
+                'kobis_movie',  # 역참조 관계는 prefetch_related 사용
+                'genres',
+                'production_companies',
+                'production_countries',
+                'spoken_languages',
+                'cast__person',
+                'crew__person',
+                'plot',
+            ).order_by('-created_at')
+            
+            # 데이터를 'tmdb'와 'kobis' 키로 구성
+            movie_list = []
+            for tmdb_movie in tmdb_movies:
+                kobis_movie = tmdb_movie.kobis_movie.first()  # 첫 번째 Movie 객체 가져오기
+                movie_data = {
+                    'tmdb': tmdb_movie,
+                    'kobis': kobis_movie
+                }
+                movie_list.append(movie_data)
+            
+            # 시리얼라이즈
+            serializer = MovieDetailSerializer(movie_list, many=True)
+            
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        
+        except Exception as e:
+            return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

@@ -63,6 +63,7 @@ class MovieDetailSerializer(serializers.Serializer):
                 "production_countries": [],
                 "spoken_languages": [],
                 "cast": [],
+                "created_at": None,
             }
         # TMDB 데이터가 있는 경우 정상 처리
         return {
@@ -106,6 +107,7 @@ class MovieDetailSerializer(serializers.Serializer):
             ],  # 사용 언어
             
             'cast': self.get_cast(tmdb),  # 출연 배우 정보
+            'created_at': tmdb.created_at,
         }
     
     def get_cast(self, tmdb):
