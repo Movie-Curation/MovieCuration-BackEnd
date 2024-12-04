@@ -6,7 +6,7 @@ from kobis.models import Movie
 from tmdb.models import Genre
 
 class UserManager(BaseUserManager):
-    def create_user(self, userid, email, name, gender, preference, nickname, password=None):
+    def create_user(self, userid, email, name, gender, genres, nickname, password=None):
         if not email:
             raise ValueError("Users must have an email address")
         if not userid:
@@ -17,20 +17,24 @@ class UserManager(BaseUserManager):
             email=self.normalize_email(email),
             name=name,
             gender=gender,
-            preference=preference,
             nickname=nickname,
         )
         user.set_password(password)
         user.save(using=self._db)
+
+        # ManyToManyField를 처리하기 위해 장르 추가
+        if genres:
+            user.genres.set(genres)  # genres는 Genre 객체의 리스트나 QuerySet이어야 합니다.
+
         return user
 
-    def create_superuser(self, userid, email, name, gender, preference, nickname, password=None):
+    def create_superuser(self, userid, email, name, gender, genres, nickname, password=None):
         user = self.create_user(
             userid=userid,
             email=email,
             name=name,
             gender=gender,
-            preference=preference,
+            genres=genres,  # Superuser도 genres를 설정할 수 있음
             nickname=nickname,
             password=password,
         )
@@ -53,7 +57,7 @@ class User(AbstractBaseUser, PermissionsMixin):
     email = models.EmailField(max_length=100, unique=True)
     name = models.CharField(max_length=50)
     gender = models.CharField(max_length=1, choices=GENDER_CHOICES)
-    preference = models.ManyToManyField(Genre, related_name="preferred_by", blank=True)
+    genres = models.ManyToManyField(Genre, related_name="users", blank=True)  # genres 필드로 변경
     nickname = models.CharField(max_length=50, unique=True)
 
     is_active = models.BooleanField(default=True)
@@ -65,7 +69,7 @@ class User(AbstractBaseUser, PermissionsMixin):
     objects = UserManager()
 
     USERNAME_FIELD = 'userid'
-    REQUIRED_FIELDS = ['email', 'name', 'gender', 'preference', 'nickname']
+    REQUIRED_FIELDS = ['email', 'name', 'gender', 'nickname']  # genres는 ManyToManyField이므로 REQUIRED_FIELDS에서 제외
 
     def __str__(self):
         return self.userid
@@ -76,18 +80,16 @@ class User(AbstractBaseUser, PermissionsMixin):
     def has_module_perms(self, app_label):
         return True
 
-
 class Review(models.Model):
-    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
-    movie_id = models.ForeignKey(Movie, on_delete=models.CASCADE, related_name='reviews')
-    rating = models.FloatField(default=10.0)  # 별점 (0.0 ~ 10.0)
-    comment = models.TextField(blank=True)
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
-    is_expert_review = models.BooleanField(default=False)  # 전문가 리뷰 여부
+    user = models.ForeignKey(User, on_delete=models.CASCADE)  # 리뷰 작성자
+    movie = models.ForeignKey(Movie, on_delete=models.CASCADE)  # 연결된 영화
+    rating = models.FloatField()  # 유저 평점
+    comment = models.TextField(blank=True, null=True)  # 유저 코멘트
+    created_at = models.DateTimeField(auto_now_add=True)  # 생성 시간
+    updated_at = models.DateTimeField(auto_now=True)  # 수정 시간
 
     def __str__(self):
-        return f"{self.user.nickname} - {self.movie_id} - {self.rating}"
+        return f"Review by {self.user} on {self.movie}"
 
 
 class ReviewReaction(models.Model):
@@ -171,3 +173,22 @@ class Follow(models.Model):
 
     def __str__(self):
         return f"{self.from_user.nickname} follows {self.to_user.nickname}"
+    
+class TmdbMovie(models.Model):
+    id = models.IntegerField(primary_key=True, help_text="TMDB 영화 ID")
+    vote_average = models.FloatField(help_text="TMDB 영화 평점")
+    genres = models.CharField(max_length=255, help_text="TMDB 영화 장르 (콤마로 구분된 문자열)")
+
+    def __str__(self):
+        return f"TMDB Movie {self.id}"
+
+
+class Movie(models.Model):
+    id = models.IntegerField(primary_key=True, help_text="영화 ID")
+    movieNm = models.CharField(max_length=255, help_text="영화명(국문)")
+    tmdb = models.ForeignKey(
+        TmdbMovie, on_delete=models.SET_NULL, null=True, blank=True, related_name="movies"
+    )
+
+    def __str__(self):
+        return self.movieNm
