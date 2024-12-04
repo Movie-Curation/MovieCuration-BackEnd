@@ -72,7 +72,7 @@ class User(AbstractBaseUser, PermissionsMixin):
     REQUIRED_FIELDS = ['email', 'name', 'gender', 'nickname']  # genres는 ManyToManyField이므로 REQUIRED_FIELDS에서 제외
 
     def __str__(self):
-        return self.userid
+        return self.username
 
     def has_perm(self, perm, obj=None):
         return True

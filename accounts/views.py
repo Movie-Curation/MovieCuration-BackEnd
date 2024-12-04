@@ -850,7 +850,8 @@ class FavoriteAPIView(APIView):
             status=status.HTTP_200_OK,
         )
 
-    
+
+
 class MovieListAPIView(APIView):
     permission_classes = [AllowAny]
 
