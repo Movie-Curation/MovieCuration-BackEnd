@@ -766,13 +766,13 @@ class FavoriteAPIView(APIView):
         사용자 즐겨찾기 영화 목록 반환.
         """
         if movieCd:
-            favorite = Favorite.objects.filter(user=request.user, movieCd=movieCd).select_related('movie').first()
+            favorite = Favorite.objects.filter(user=request.user, movie__movieCd=movieCd).select_related('movie').first()
             if not favorite:
-                return Response({"error": "Favorite not found"}, status=status.HTTP_404_NOT_FOUND)
+                return Response({"error": "Movie not found"}, status=status.HTTP_404_NOT_FOUND)
 
             movie = favorite.movie
             data = {
-                "movieCd": movie.id,
+                "movieCd": movie.movieCd,  # movieCd로 반환
                 "movie_name": movie.movieNm,
                 "vote_average": movie.vote_average,
                 "genres": [genre.name for genre in movie.genres.all()],
@@ -782,7 +782,7 @@ class FavoriteAPIView(APIView):
         favorites = Favorite.objects.filter(user=request.user).select_related('movie')
         data = [
             {
-                "movieCd": favorite.movie.id,
+                "movieCd": favorite.movie.movieCd,  # movieCd로 반환
                 "movie_name": favorite.movie.movieNm,
                 "vote_average": favorite.movie.vote_average,
                 "genres": [genre.name for genre in favorite.movie.genres.all()],
@@ -795,7 +795,7 @@ class FavoriteAPIView(APIView):
         request_body=openapi.Schema(
             type=openapi.TYPE_OBJECT,
             properties={
-                'movieCd': openapi.Schema(type=openapi.TYPE_INTEGER, description='영화 ID'),
+                'movieCd': openapi.Schema(type=openapi.TYPE_INTEGER, description='영화 코드 (movieCd)'),
             },
             required=['movieCd'],  # 필수 필드
         ),
@@ -815,7 +815,7 @@ class FavoriteAPIView(APIView):
             return Response({"error": "movieCd is required"}, status=status.HTTP_400_BAD_REQUEST)
 
         try:
-            movie = Movie.objects.get(id=movieCd)
+            movie = Movie.objects.get(movieCd=movieCd)
         except Movie.DoesNotExist:
             return Response({"error": "Movie not found"}, status=status.HTTP_404_NOT_FOUND)
 
@@ -833,10 +833,10 @@ class FavoriteAPIView(APIView):
         """
         특정 영화 즐겨찾기 삭제
 
-        유저의 특정 영화 즐겨찾기 데이터를 삭제합니다
+        유저의 특정 영화 즐겨찾기 데이터를 삭제합니다.
         """
         try:
-            movie = Movie.objects.get(id=movieCd)
+            movie = Movie.objects.get(movieCd=movieCd)
         except Movie.DoesNotExist:
             return Response({"error": "Movie not found"}, status=status.HTTP_404_NOT_FOUND)
 
@@ -857,11 +857,11 @@ class MovieListAPIView(APIView):
 
     def get(self, request):
         """
-        모든 영화 목록 조회
+        모든 영화 목록 조회.
 
         데이터베이스에 저장된 모든 영화의 리스트를 반환합니다.
         """
-        movies = Movie.objects.prefetch_related('genres').all()  # genres를 Prefetch
+        movies = Movie.objects.prefetch_related('genres').all()
         serializer = MovieSerializer(movies, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
@@ -871,11 +871,11 @@ class MovieDetailAPIView(APIView):
 
     def get(self, request, movieCd):
         """
-        특정 영화 정보 조회
+        특정 영화 정보 조회.
 
-        영화 ID를 기반으로 영화 정보를 반환합니다.
+        영화 코드 (movieCd)를 기반으로 영화 정보를 반환합니다.
         """
-        movie = get_object_or_404(Movie.objects.prefetch_related('genres'), id=movieCd)
+        movie = get_object_or_404(Movie.objects.prefetch_related('genres'), movieCd=movieCd)
         serializer = MovieSerializer(movie)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
