@@ -55,6 +55,7 @@ INSTALLED_APPS = [
     'accounts',        #기본 내 프로젝트
     'kobis',
     'tmdb',
+    'ai',
     'corsheaders', #프론트엔드 통신
     'rest_framework_simplejwt.token_blacklist',   #블랙리스트 기능
     'drf_yasg',  #스웨거 사용 
