@@ -18,7 +18,7 @@ from drf_yasg.utils import swagger_auto_schema
 from .models import Comment                                #댓글기능
 from .serializer import CommentSerializer
 from .serializer import ReviewSerializer                   #리뷰 직렬화 추가
-from .models import Movie
+from .models import Movie , TmdbMovie
 from .serializer import MovieSerializer  #영화 불러오기
 
 from .models import ReviewReaction
@@ -64,8 +64,6 @@ class LogoutAPIView(APIView):
 
 
 class RegisterUserAPIView(APIView):
-    
-   
     @swagger_auto_schema(
         request_body=UserRegisterSerializer,
         responses={
@@ -74,35 +72,35 @@ class RegisterUserAPIView(APIView):
         },
     )
     def post(self, request):
-
         """
         새로운 사용자 등록.
 
         신규 유저를 회원으로 등록합니다.
         """
-        
-        
         serializer = UserRegisterSerializer(data=request.data)
         if serializer.is_valid():
             serializer.save()
             return Response({"message": "User registered successfully."}, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-
 class UserProfileUpdateView(APIView):
-    
     permission_classes = [IsAuthenticated]
 
     def put(self, request):
         """
         사용자 프로필 업데이트
 
-        사용자의 프로필 정보를 수정합니다
+        사용자의 프로필 정보를 수정합니다.
         """
         user = request.user
+        genres = request.data.pop("genres", None)  # genres를 별도로 처리
         serializer = UserProfileSerializer(user, data=request.data, partial=True)
         if serializer.is_valid():
             serializer.save()
+
+            # ManyToManyField 갱신
+            if genres is not None:
+                user.genres.set(genres)  # 새로운 장르 리스트로 설정
             return Response(serializer.data, status=status.HTTP_200_OK)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     
@@ -199,36 +197,41 @@ class ReviewCreateAPIView(APIView):
                 'movie_id': openapi.Schema(type=openapi.TYPE_INTEGER, description='영화 ID'),
                 'rating': openapi.Schema(type=openapi.TYPE_NUMBER, format='float', description='평점 (0.0 ~ 10.0)'),
                 'comment': openapi.Schema(type=openapi.TYPE_STRING, description='리뷰 내용 (선택)'),
-                'is_expert_review': openapi.Schema(type=openapi.TYPE_BOOLEAN, description='전문가 리뷰 여부 (선택)'),
             },
             required=['movie_id', 'rating'],  # 필수 필드
         ),
-        responses={
-            201: "리뷰 작성 성공",
-            400: "요청 유효성 검사 실패",
-        },
+        responses={201: "리뷰 작성 성공", 400: "요청 유효성 검사 실패"},
     )
     def post(self, request):
         """
         리뷰 작성.
 
-        영화에 대한 새로운 리뷰를 작성합니다.
+        특정 영화에 대한 리뷰를 작성합니다.
         """
         movie_id = request.data.get("movie_id")
         if not movie_id:
             return Response({"error": "movie_id is required"}, status=status.HTTP_400_BAD_REQUEST)
 
-        # 중복 리뷰 방지
-        if Review.objects.filter(user=request.user, movie_id=movie_id).exists():
+        movie = get_object_or_404(Movie, id=movie_id)
+
+        # 유저가 이미 리뷰를 작성했는지 확인
+        if Review.objects.filter(user=request.user, movie=movie).exists():
             return Response({"error": "You have already reviewed this movie."}, status=status.HTTP_400_BAD_REQUEST)
 
-        serializer = ReviewSerializer(data=request.data)
+        review_data = {
+            "movie_id": movie.id,
+            "rating": request.data.get("rating"),
+            "comment": request.data.get("comment", ""),
+        }
+
+        serializer = ReviewSerializer(data=review_data)
         if serializer.is_valid():
-            # user를 추가하고 movie_id를 저장
-            serializer.save(user=request.user)
+            serializer.save(user=request.user, movie=movie)
             return Response(serializer.data, status=status.HTTP_201_CREATED)
 
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    
+
 
 class ReviewUpdateAPIView(APIView):           #리뷰  평점,댓글 수정
     
@@ -273,23 +276,14 @@ class MovieReviewsAPIView(APIView):
     
     permission_classes = [IsAuthenticated]
 
-    @swagger_auto_schema(
-        manual_parameters=[
-            openapi.Parameter('movie_id', openapi.IN_PATH, description="영화 ID", type=openapi.TYPE_INTEGER),
-        ],
-        responses={
-            200: "리뷰 목록 반환",
-            404: "리뷰 없음"
-        }
-    )
-
     def get(self, request, movie_id):
         """
         특정 영화에 대한 모든 리뷰 조회
 
         특정 영화 ID를 기반으로 해당 영화의 리뷰를 반환합니다.
         """
-        reviews = Review.objects.filter(movie_id=movie_id)
+        movie = get_object_or_404(Movie.objects.prefetch_related('genres'), id=movie_id)
+        reviews = Review.objects.filter(movie=movie)
         if not reviews.exists():
             return Response({"message": "No reviews found for this movie."}, status=status.HTTP_404_NOT_FOUND)
         serializer = ReviewSerializer(reviews, many=True)
@@ -297,8 +291,7 @@ class MovieReviewsAPIView(APIView):
     
     
 class MovieReviewStatisticsAPIView(APIView):
-    
-    permission_classes = [AllowAny]  # 누구나 접근 가능
+    permission_classes = [AllowAny]
 
     def get(self, request, movie_id):
         """
@@ -306,9 +299,8 @@ class MovieReviewStatisticsAPIView(APIView):
 
         특정 영화에 대한 평균 평점 및 리뷰 개수를 반환합니다.
         """
-        
-        # 해당 영화의 리뷰를 가져옵니다.
-        reviews = Review.objects.filter(movie_id=movie_id)
+        movie = get_object_or_404(Movie.objects.prefetch_related('genres'), id=movie_id)
+        reviews = Review.objects.filter(movie=movie)
 
         if not reviews.exists():
             return Response(
@@ -316,23 +308,19 @@ class MovieReviewStatisticsAPIView(APIView):
                 status=status.HTTP_404_NOT_FOUND,
             )
 
-        # 평균 별점 및 리뷰 개수 계산
         statistics = reviews.aggregate(
             average_rating=Avg('rating'),
             review_count=Count('id')
         )
 
-        # 응답 데이터 직렬화
         data = {
-            "movie_id": movie_id,
-            "average_rating": statistics['average_rating'], # 평점은 10점 기준
-            "review_count": statistics['review_count']
-        }
-        serializer = ReviewStatisticsSerializer(data=data)
-        if serializer.is_valid():
-            return Response(serializer.data, status=status.HTTP_200_OK)
-
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        "movie_id": movie.id,
+        "global_vote_average": movie.vote_average,  # TMDB 또는 외부 데이터베이스의 글로벌 평균 평점
+        "genres": [genre.name for genre in movie.genres.all()],  # genres 리스트
+        "local_average_rating": statistics['average_rating'],  # 앱 사용자들의 리뷰 평균 평점
+        "review_count": statistics['review_count'],
+}
+        return Response(data, status=status.HTTP_200_OK)
 
 
 class UserReviewsAPIView(APIView):
@@ -748,47 +736,39 @@ class FollowersListView(APIView):
 
 
 class FavoriteAPIView(APIView):
-    
     permission_classes = [IsAuthenticated]
 
-    @swagger_auto_schema(
-        manual_parameters=[
-            openapi.Parameter(
-                "movie_id",
-                openapi.IN_PATH,
-                description="ID of the movie to retrieve favorite info",
-                type=openapi.TYPE_INTEGER,
-            )
-        ],
-        responses={
-            200: openapi.Response("Favorites retrieved successfully."),
-            404: openapi.Response("Favorite not found."),
-        },
-    )
     def get(self, request, movie_id=None):
         """
-        유저의 즐겨찾기 목록 조회.
+        즐겨찾기 목록 조회.
 
-        사용자가 즐겨찾기에 추가한 영화 목록을 반환합니다.
+        사용자 즐겨찾기 영화 목록 반환.
         """
         if movie_id:
-            # 특정 movie_id에 대한 즐겨찾기 조회
-            favorite = Favorite.objects.filter(user=request.user, movie_id=movie_id).first()
+            favorite = Favorite.objects.filter(user=request.user, movie_id=movie_id).select_related('movie').first()
             if not favorite:
                 return Response({"error": "Favorite not found"}, status=status.HTTP_404_NOT_FOUND)
-            serializer = FavoriteSerializer(favorite)
-            return Response(
-                {"message": "Favorite retrieved successfully.", "data": serializer.data},
-                status=status.HTTP_200_OK,
-            )
-        else:
-            # 모든 즐겨찾기 조회
-            favorites = Favorite.objects.filter(user=request.user)
-            serializer = FavoriteSerializer(favorites, many=True)
-            return Response(
-                {"message": "Favorites list retrieved successfully.", "data": serializer.data},
-                status=status.HTTP_200_OK,
-            )
+
+            movie = favorite.movie
+            data = {
+                "movie_id": movie.id,
+                "movie_name": movie.movieNm,
+                "vote_average": movie.vote_average,
+                "genres": [genre.name for genre in movie.genres.all()],
+            }
+            return Response({"favorite": data}, status=status.HTTP_200_OK)
+
+        favorites = Favorite.objects.filter(user=request.user).select_related('movie')
+        data = [
+            {
+                "movie_id": favorite.movie.id,
+                "movie_name": favorite.movie.movieNm,
+                "vote_average": favorite.movie.vote_average,
+                "genres": [genre.name for genre in favorite.movie.genres.all()],
+            }
+            for favorite in favorites
+        ]
+        return Response({"favorites": data}, status=status.HTTP_200_OK)
 
     @swagger_auto_schema(
         request_body=FavoriteSerializer,
@@ -834,7 +814,7 @@ class FavoriteAPIView(APIView):
         )
     
 class MovieListAPIView(APIView):
-    permission_classes = [AllowAny]  # 누구나 접근 가능
+    permission_classes = [AllowAny]
 
     def get(self, request):
         """
@@ -842,7 +822,7 @@ class MovieListAPIView(APIView):
 
         데이터베이스에 저장된 모든 영화의 리스트를 반환합니다.
         """
-        movies = Movie.objects.all()
+        movies = Movie.objects.prefetch_related('genres').all()  # genres를 Prefetch
         serializer = MovieSerializer(movies, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
@@ -856,18 +836,14 @@ class MovieDetailAPIView(APIView):
 
         영화 ID를 기반으로 영화 정보를 반환합니다.
         """
-        movie = get_object_or_404(Movie, id=movie_id)
+        movie = get_object_or_404(Movie.objects.prefetch_related('genres'), id=movie_id)
         serializer = MovieSerializer(movie)
         return Response(serializer.data, status=status.HTTP_200_OK)
-
-
-
 
 class UserProfileView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-
         """
         사용자 프로필 조회
 
@@ -879,7 +855,7 @@ class UserProfileView(APIView):
             "email": user.email,
             "name": user.name,
             "gender": user.gender,
-            "preference": user.preference,
+            "genres": list(user.genres.values("id", "name")),  # ManyToManyField 직렬화
             "nickname": user.nickname,
         }
         return Response(
@@ -887,7 +863,6 @@ class UserProfileView(APIView):
             status=status.HTTP_200_OK,
         )
     
-
 def generate_diagram(request):
 
     
