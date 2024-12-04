@@ -87,7 +87,7 @@ class FavoriteSerializer(serializers.ModelSerializer):
     """
     class Meta:
         model = Favorite
-        fields = ['id', 'movie_id', 'created_at']
+        fields = ['id', 'movieCd', 'created_at']
 
 
 class MovieSerializer(serializers.ModelSerializer):
@@ -102,7 +102,7 @@ class ReviewStatisticsSerializer(serializers.Serializer):
     """
     리뷰 평균 별점
     """
-    movie_id = serializers.IntegerField()
+    movieCd = serializers.IntegerField()
     average_rating = serializers.FloatField()
     review_count = serializers.IntegerField()
 
@@ -130,7 +130,7 @@ class ReviewSerializer(serializers.ModelSerializer):
     class Meta:
         model = Review
         fields = [
-            'id', 'user', 'movie_id', 'rating', 'comment', 
+            'id', 'user', 'movieCd', 'rating', 'comment', 
             'created_at', 'updated_at', 'tmdb_vote_average', 'tmdb_genres'
         ]
         read_only_fields = ['user', 'created_at', 'updated_at', 'tmdb_vote_average', 'tmdb_genres']

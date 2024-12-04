@@ -4,7 +4,7 @@ from kobis.models import Movie
 
 @admin.register(Favorite)
 class FavoriteAdmin(admin.ModelAdmin):
-    list_display = ['user', 'movie_id', 'created_at']
+    list_display = ['user', 'movieCd', 'created_at']
 
 # @admin.register(Movie)
 # class MovieAdmin(admin.ModelAdmin):

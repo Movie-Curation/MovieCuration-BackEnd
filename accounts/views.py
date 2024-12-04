@@ -216,11 +216,11 @@ class ReviewCreateAPIView(APIView):
         request_body=openapi.Schema(
             type=openapi.TYPE_OBJECT,
             properties={
-                'movie_id': openapi.Schema(type=openapi.TYPE_INTEGER, description='영화 ID'),
+                'movieCd': openapi.Schema(type=openapi.TYPE_INTEGER, description='영화 ID'),
                 'rating': openapi.Schema(type=openapi.TYPE_NUMBER, format='float', description='평점 (0.0 ~ 10.0)'),
                 'comment': openapi.Schema(type=openapi.TYPE_STRING, description='리뷰 내용 (선택)'),
             },
-            required=['movie_id', 'rating'],  # 필수 필드
+            required=['movieCd', 'rating'],  # 필수 필드
         ),
         responses={201: "리뷰 작성 성공", 400: "요청 유효성 검사 실패"},
     )
@@ -230,18 +230,18 @@ class ReviewCreateAPIView(APIView):
 
         특정 영화에 대한 리뷰를 작성합니다.
         """
-        movie_id = request.data.get("movie_id")
-        if not movie_id:
-            return Response({"error": "movie_id is required"}, status=status.HTTP_400_BAD_REQUEST)
+        movieCd = request.data.get("movieCd")
+        if not movieCd:
+            return Response({"error": "movieCd is required"}, status=status.HTTP_400_BAD_REQUEST)
 
-        movie = get_object_or_404(Movie, id=movie_id)
+        movie = get_object_or_404(Movie, id=movieCd)
 
         # 유저가 이미 리뷰를 작성했는지 확인
         if Review.objects.filter(user=request.user, movie=movie).exists():
             return Response({"error": "You have already reviewed this movie."}, status=status.HTTP_400_BAD_REQUEST)
 
         review_data = {
-            "movie_id": movie.id,
+            "movieCd": movieCd,
             "rating": request.data.get("rating"),
             "comment": request.data.get("comment", ""),
         }
@@ -298,13 +298,13 @@ class MovieReviewsAPIView(APIView):
     
     permission_classes = [IsAuthenticated]
 
-    def get(self, request, movie_id):
+    def get(self, request, movieCd):
         """
         특정 영화에 대한 모든 리뷰 조회
 
         특정 영화 ID를 기반으로 해당 영화의 리뷰를 반환합니다.
         """
-        movie = get_object_or_404(Movie.objects.prefetch_related('genres'), id=movie_id)
+        movie = get_object_or_404(Movie.objects.prefetch_related('genres'), id=movieCd)
         reviews = Review.objects.filter(movie=movie)
         if not reviews.exists():
             return Response({"message": "No reviews found for this movie."}, status=status.HTTP_404_NOT_FOUND)
@@ -315,18 +315,18 @@ class MovieReviewsAPIView(APIView):
 class MovieReviewStatisticsAPIView(APIView):
     permission_classes = [AllowAny]
 
-    def get(self, request, movie_id):
+    def get(self, request, movieCd):
         """
         특정 영화의 리뷰 통계.
 
         특정 영화에 대한 평균 평점 및 리뷰 개수를 반환합니다.
         """
-        movie = get_object_or_404(Movie.objects.prefetch_related('genres'), id=movie_id)
+        movie = get_object_or_404(Movie.objects.prefetch_related('genres'), id=movieCd)
         reviews = Review.objects.filter(movie=movie)
 
         if not reviews.exists():
             return Response(
-                {"error": f"No reviews found for movie ID {movie_id}."},
+                {"error": f"No reviews found for movie ID {movieCd}."},
                 status=status.HTTP_404_NOT_FOUND,
             )
 
@@ -336,7 +336,7 @@ class MovieReviewStatisticsAPIView(APIView):
         )
 
         data = {
-        "movie_id": movie.id,
+        "movieCd": movie.id,
         "global_vote_average": movie.vote_average,  # TMDB 또는 외부 데이터베이스의 글로벌 평균 평점
         "genres": [genre.name for genre in movie.genres.all()],  # genres 리스트
         "local_average_rating": statistics['average_rating'],  # 앱 사용자들의 리뷰 평균 평점
@@ -548,11 +548,11 @@ class RegularReviewAPIView(APIView):
         request_body=openapi.Schema(
             type=openapi.TYPE_OBJECT,
             properties={
-                'movie_id': openapi.Schema(type=openapi.TYPE_INTEGER, description='영화 ID'),
+                'movieCd': openapi.Schema(type=openapi.TYPE_INTEGER, description='영화 ID'),
                 'rating': openapi.Schema(type=openapi.TYPE_NUMBER, format='float', description='평점 (0.0 ~ 10.0)'),
                 'comment': openapi.Schema(type=openapi.TYPE_STRING, description='리뷰 내용 (선택)'),
             },
-            required=['movie_id', 'rating'],  # 필수 필드
+            required=['movieCd', 'rating'],  # 필수 필드
         ),
         responses={
             201: "리뷰 작성 성공",
@@ -565,12 +565,12 @@ class RegularReviewAPIView(APIView):
 
         일반 사용자가 새로운 리뷰를 작성합니다.
         """
-        movie_id = request.data.get("movie_id")
-        if not movie_id:
-            return Response({"error": "movie_id is required"}, status=status.HTTP_400_BAD_REQUEST)
+        movieCd = request.data.get("movieCd")
+        if not movieCd:
+            return Response({"error": "movieCd is required"}, status=status.HTTP_400_BAD_REQUEST)
 
         # 중복 리뷰 방지
-        if Review.objects.filter(user=request.user, movie_id=movie_id).exists():
+        if Review.objects.filter(user=request.user, movieCd=movieCd).exists():
             return Response({"error": "You have already reviewed this movie."}, status=status.HTTP_400_BAD_REQUEST)
 
         # `is_expert_review`는 강제로 False로 설정
@@ -597,11 +597,11 @@ class ExpertReviewAPIView(APIView):
         request_body=openapi.Schema(
             type=openapi.TYPE_OBJECT,
             properties={
-                'movie_id': openapi.Schema(type=openapi.TYPE_INTEGER, description='영화 ID'),
+                'movieCd': openapi.Schema(type=openapi.TYPE_INTEGER, description='영화 ID'),
                 'rating': openapi.Schema(type=openapi.TYPE_NUMBER, format='float', description='평점 (0.0 ~ 10.0)'),
                 'comment': openapi.Schema(type=openapi.TYPE_STRING, description='리뷰 내용 (선택)'),
             },
-            required=['movie_id', 'rating'],  # 필수 필드
+            required=['movieCd', 'rating'],  # 필수 필드
         ),
         responses={
             201: "리뷰 작성 성공",
@@ -614,12 +614,12 @@ class ExpertReviewAPIView(APIView):
 
         전문가가 작성 로직
         """
-        movie_id = request.data.get("movie_id")
-        if not movie_id:
-            return Response({"error": "movie_id is required"}, status=status.HTTP_400_BAD_REQUEST)
+        movieCd = request.data.get("movieCd")
+        if not movieCd:
+            return Response({"error": "movieCd is required"}, status=status.HTTP_400_BAD_REQUEST)
 
         # 중복 리뷰 방지
-        if Review.objects.filter(user=request.user, movie_id=movie_id, is_expert_review=True).exists():
+        if Review.objects.filter(user=request.user, movieCd=movieCd, is_expert_review=True).exists():
             return Response({"error": "You have already reviewed this movie as an expert."}, status=status.HTTP_400_BAD_REQUEST)
 
         # `is_expert_review` 강제 설정
@@ -759,20 +759,20 @@ class FollowersListView(APIView):
 class FavoriteAPIView(APIView):
     permission_classes = [IsAuthenticated]
 
-    def get(self, request, movie_id=None):
+    def get(self, request, movieCd=None):
         """
         즐겨찾기 목록 조회.
 
         사용자 즐겨찾기 영화 목록 반환.
         """
-        if movie_id:
-            favorite = Favorite.objects.filter(user=request.user, movie_id=movie_id).select_related('movie').first()
+        if movieCd:
+            favorite = Favorite.objects.filter(user=request.user, movieCd=movieCd).select_related('movie').first()
             if not favorite:
                 return Response({"error": "Favorite not found"}, status=status.HTTP_404_NOT_FOUND)
 
             movie = favorite.movie
             data = {
-                "movie_id": movie.id,
+                "movieCd": movie.id,
                 "movie_name": movie.movieNm,
                 "vote_average": movie.vote_average,
                 "genres": [genre.name for genre in movie.genres.all()],
@@ -782,7 +782,7 @@ class FavoriteAPIView(APIView):
         favorites = Favorite.objects.filter(user=request.user).select_related('movie')
         data = [
             {
-                "movie_id": favorite.movie.id,
+                "movieCd": favorite.movie.id,
                 "movie_name": favorite.movie.movieNm,
                 "vote_average": favorite.movie.vote_average,
                 "genres": [genre.name for genre in favorite.movie.genres.all()],
@@ -795,9 +795,9 @@ class FavoriteAPIView(APIView):
         request_body=openapi.Schema(
             type=openapi.TYPE_OBJECT,
             properties={
-                'movie_id': openapi.Schema(type=openapi.TYPE_INTEGER, description='영화 ID'),
+                'movieCd': openapi.Schema(type=openapi.TYPE_INTEGER, description='영화 ID'),
             },
-            required=['movie_id'],  # 필수 필드
+            required=['movieCd'],  # 필수 필드
         ),
         responses={
             201: "Movie added to favorites successfully.",
@@ -810,12 +810,12 @@ class FavoriteAPIView(APIView):
 
         특정 영화를 즐겨찾기에 추가합니다.
         """
-        movie_id = request.data.get("movie_id")
-        if not movie_id:
-            return Response({"error": "movie_id is required"}, status=status.HTTP_400_BAD_REQUEST)
+        movieCd = request.data.get("movieCd")
+        if not movieCd:
+            return Response({"error": "movieCd is required"}, status=status.HTTP_400_BAD_REQUEST)
 
         try:
-            movie = Movie.objects.get(id=movie_id)
+            movie = Movie.objects.get(id=movieCd)
         except Movie.DoesNotExist:
             return Response({"error": "Movie not found"}, status=status.HTTP_404_NOT_FOUND)
 
@@ -829,14 +829,14 @@ class FavoriteAPIView(APIView):
             status=status.HTTP_201_CREATED,
         )
 
-    def delete(self, request, movie_id):
+    def delete(self, request, movieCd):
         """
         특정 영화 즐겨찾기 삭제
 
         유저의 특정 영화 즐겨찾기 데이터를 삭제합니다
         """
         try:
-            movie = Movie.objects.get(id=movie_id)
+            movie = Movie.objects.get(id=movieCd)
         except Movie.DoesNotExist:
             return Response({"error": "Movie not found"}, status=status.HTTP_404_NOT_FOUND)
 
@@ -869,13 +869,13 @@ class MovieListAPIView(APIView):
 class MovieDetailAPIView(APIView):
     permission_classes = [AllowAny]
 
-    def get(self, request, movie_id):
+    def get(self, request, movieCd):
         """
         특정 영화 정보 조회
 
         영화 ID를 기반으로 영화 정보를 반환합니다.
         """
-        movie = get_object_or_404(Movie.objects.prefetch_related('genres'), id=movie_id)
+        movie = get_object_or_404(Movie.objects.prefetch_related('genres'), id=movieCd)
         serializer = MovieSerializer(movie)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
