@@ -106,6 +106,61 @@ class BoxOfficeBannerAPIView(APIView):
         return Response(result, status=status.HTTP_200_OK)
 
 
+class MoviesByGenreAPIView(ListAPIView):
+    """
+    TMDB 장르를 기준으로 영화를 필터링하여 반환하는 API
+    엔드포인트: /api/movies/genre/<str:genre_name>/
+
+    - 영화제목: 'kobis.movieNm'
+    - 제작연도: 'kobis.prdtYear'
+    - 국가: 'kobis.nationNm'
+    - 포스터: 'tmdb.poster_url'
+    """
+    pagination_class = PageNumberPagination
+
+    def get_queryset(self):
+        genre_name = self.kwargs.get('genre_name', None)
+        if not genre_name:
+            return TmdbMovie.objects.none()
+        
+        # 해당 장르의 TMDB 영화 필터링
+        genre = Genre.objects.filter(name__iexact=genre_name).first()
+        if genre:
+            return TmdbMovie.objects.filter(genres=genre)
+        return TmdbMovie.objects.none()
+
+    def list(self, request, *args, **kwargs):
+        queryset = self.get_queryset()
+    
+        # Pagination 적용
+        page = self.paginate_queryset(queryset)
+        if page is not None:
+            result = []
+            for movie in page:
+                kobis_movie = movie.kobis_movie.first()  # 첫 번째 연결된 Movie 객체
+                if kobis_movie:  # 연결된 kobis_movie가 있을 경우만 처리
+                    result.append(
+                        MovieDetailSerializer({
+                            'kobis': kobis_movie,
+                            'tmdb': movie
+                        }).data
+                    )
+            return self.get_paginated_response(result)
+    
+        # 데이터 직렬화
+        result = []
+        for movie in queryset:
+            kobis_movie = movie.kobis_movie.first()
+            if kobis_movie:
+                result.append(
+                    MovieDetailSerializer({
+                        'kobis': kobis_movie,
+                        'tmdb': movie
+                    }).data
+                )
+        return Response(result, status=status.HTTP_200_OK)
+
+
 class MovieDetailAPIView(APIView):
     '''
     < 영화 상세정보 API>
