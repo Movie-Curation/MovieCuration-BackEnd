@@ -72,7 +72,7 @@ class User(AbstractBaseUser, PermissionsMixin):
     REQUIRED_FIELDS = ['email', 'name', 'gender', 'nickname']  # genres는 ManyToManyField이므로 REQUIRED_FIELDS에서 제외
 
     def __str__(self):
-        return self.username
+        return self.userid
 
     def has_perm(self, perm, obj=None):
         return True
@@ -150,7 +150,7 @@ class Favorite(models.Model):
         unique_together = ('user', 'movie_id')
 
     def __str__(self):
-        return f"{self.user.nickname} - Movie ID {self.movie_id}"
+        return f"{self.user.userid} - Movie ID {self.movie_id}"
     
 class Comment(models.Model):
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)  # 댓글 작성자
