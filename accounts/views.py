@@ -756,7 +756,6 @@ class FollowersListView(APIView):
             status=status.HTTP_200_OK,
         )
 
-
 class FavoriteAPIView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -793,7 +792,13 @@ class FavoriteAPIView(APIView):
         return Response({"favorites": data}, status=status.HTTP_200_OK)
 
     @swagger_auto_schema(
-        request_body=FavoriteSerializer,
+        request_body=openapi.Schema(
+            type=openapi.TYPE_OBJECT,
+            properties={
+                'movie_id': openapi.Schema(type=openapi.TYPE_INTEGER, description='영화 ID'),
+            },
+            required=['movie_id'],  # 필수 필드
+        ),
         responses={
             201: "Movie added to favorites successfully.",
             400: "Movie already exists in favorites.",
@@ -809,10 +814,15 @@ class FavoriteAPIView(APIView):
         if not movie_id:
             return Response({"error": "movie_id is required"}, status=status.HTTP_400_BAD_REQUEST)
 
-        if Favorite.objects.filter(user=request.user, movie_id=movie_id).exists():
+        try:
+            movie = Movie.objects.get(id=movie_id)
+        except Movie.DoesNotExist:
+            return Response({"error": "Movie not found"}, status=status.HTTP_404_NOT_FOUND)
+
+        if Favorite.objects.filter(user=request.user, movie=movie).exists():
             return Response({"error": "Already added to favorites"}, status=status.HTTP_400_BAD_REQUEST)
 
-        favorite = Favorite.objects.create(user=request.user, movie_id=movie_id)
+        favorite = Favorite.objects.create(user=request.user, movie=movie)
         serializer = FavoriteSerializer(favorite)
         return Response(
             {"message": "Movie added to favorites successfully.", "data": serializer.data},
@@ -821,11 +831,16 @@ class FavoriteAPIView(APIView):
 
     def delete(self, request, movie_id):
         """
-        전체 즐겨찾기 삭제
+        특정 영화 즐겨찾기 삭제
 
-        유저의 모든 즐겨찾기 데이터를 삭제합니다
+        유저의 특정 영화 즐겨찾기 데이터를 삭제합니다
         """
-        favorite = Favorite.objects.filter(user=request.user, movie_id=movie_id).first()
+        try:
+            movie = Movie.objects.get(id=movie_id)
+        except Movie.DoesNotExist:
+            return Response({"error": "Movie not found"}, status=status.HTTP_404_NOT_FOUND)
+
+        favorite = Favorite.objects.filter(user=request.user, movie=movie).first()
         if not favorite:
             return Response({"error": "Favorite not found"}, status=status.HTTP_404_NOT_FOUND)
 
@@ -834,6 +849,7 @@ class FavoriteAPIView(APIView):
             {"message": "Removed from favorites successfully."},
             status=status.HTTP_200_OK,
         )
+
     
 class MovieListAPIView(APIView):
     permission_classes = [AllowAny]
