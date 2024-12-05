@@ -13,6 +13,7 @@ https://docs.djangoproject.com/en/5.0/ref/settings/
 from pathlib import Path
 from datetime import timedelta #JWT 로그인/로그아웃기능 설정
 from decouple import config
+import os
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -196,3 +197,6 @@ KOBIS_API_BASE_URL = 'http://www.kobis.or.kr/kobisopenapi/webservice/rest'
 # TMDB API 설정
 TMDB_BEARER_TOKEN = config('TMDB_BEARER_TOKEN')
 TMDB_API_BASE_URL = 'https://api.themoviedb.org/3'
+
+# openai API 설정
+OPENAI_API_KEY = config('OPENAI_API_KEY')

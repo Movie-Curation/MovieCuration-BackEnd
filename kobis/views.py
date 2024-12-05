@@ -117,6 +117,7 @@ class MoviesByGenreAPIView(ListAPIView):
     - 포스터: 'tmdb.poster_url'
     """
     pagination_class = PageNumberPagination
+    serializer_class = MovieDetailSerializer
 
     def get_queryset(self):
         genre_name = self.kwargs.get('genre_name', None)
