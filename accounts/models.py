@@ -82,7 +82,9 @@ class User(AbstractBaseUser, PermissionsMixin):
 
 class Review(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE)  # 리뷰 작성자
-    movie = models.ForeignKey(Movie, on_delete=models.CASCADE)  # 연결된 영화
+    movie = models.ForeignKey(
+        'kobis.Movie', on_delete=models.CASCADE, related_name='reviews',to_field='movieCd'  # 명시적으로 movieCd를 참조
+    )  
     rating = models.FloatField()  # 유저 평점
     comment = models.TextField(blank=True, null=True)  # 유저 코멘트
     created_at = models.DateTimeField(auto_now_add=True)  # 생성 시간
@@ -142,15 +144,24 @@ class ReviewReport(models.Model):                #리뷰 신고 기능
 #         return self.title
 
 class Favorite(models.Model):
-    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="favorites")
-    movie = models.ForeignKey(Movie, on_delete=models.CASCADE, related_name='favorites')  # 수정
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="favorites"
+    )
+    movie = models.ForeignKey(
+        'kobis.Movie',  # kobis.Movie를 참조
+        on_delete=models.CASCADE,
+        related_name='favorites',
+        to_field='movieCd'  # movieCd를 참조
+    )
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        unique_together = ('user', 'movie')  # movieCd 대신 movie로 수정
+        unique_together = ('user', 'movie')  # user와 movie의 조합이 유일하도록 설정
 
     def __str__(self):
-        return f"{self.user.userid} - Movie ID {self.movie.movieCd}"  # movieCd -> movie.movieCd
+        return f"{self.user.userid} - Movie ID {self.movie.movieCd}"  # movieCd 출력
     
 class Comment(models.Model):
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)  # 댓글 작성자

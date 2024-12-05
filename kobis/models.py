@@ -2,7 +2,7 @@ from django.db import models
 
 
 class Movie(models.Model):
-    movieCd = models.CharField(max_length=100, unique=True, help_text="영화 코드를 출력합니다.")
+    movieCd = models.IntegerField(primary_key=True, help_text="영화 ID")  # Primary Key 설정
     movieNm = models.CharField(max_length=255, help_text="영화명(국문)을 출력합니다.")
     movieNmEn = models.CharField(max_length=255, blank=True, null=True, help_text="영화명(영문)을 출력합니다.")
     movieNmOg = models.CharField(max_length=255, blank=True, null=True, help_text="영화명(원문)을 출력합니다.")
