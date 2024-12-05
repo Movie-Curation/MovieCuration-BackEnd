@@ -184,7 +184,7 @@ class TmdbMovie(models.Model):
 
 
 class Movie(models.Model):
-    id = models.IntegerField(primary_key=True, help_text="영화 ID")
+    movieCd = models.IntegerField(primary_key=True, help_text="영화 ID")
     movieNm = models.CharField(max_length=255, help_text="영화명(국문)")
     tmdb = models.ForeignKey(
         TmdbMovie, on_delete=models.SET_NULL, null=True, blank=True, related_name="movies"
