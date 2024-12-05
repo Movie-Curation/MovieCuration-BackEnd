@@ -231,21 +231,35 @@ class ReviewCreateAPIView(APIView):
         특정 영화에 대한 리뷰를 작성합니다.
         """
         movieCd = request.data.get("movieCd")
+
+        # movieCd 유효성 확인
         if not movieCd:
             return Response({"error": "movieCd is required"}, status=status.HTTP_400_BAD_REQUEST)
 
-        movie = get_object_or_404(Movie, ovieCd=movieCd)
+        # movieCd를 숫자로 변환 (문자열로 전달된 경우 대비)
+        try:
+            movieCd = int(movieCd)
+        except (ValueError, TypeError):
+            return Response(
+                {"error": "Invalid movieCd. It must be an integer."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # 데이터베이스에서 영화 조회
+        movie = get_object_or_404(Movie, movieCd=movieCd)
 
         # 유저가 이미 리뷰를 작성했는지 확인
         if Review.objects.filter(user=request.user, movie=movie).exists():
             return Response({"error": "You have already reviewed this movie."}, status=status.HTTP_400_BAD_REQUEST)
 
+        # 리뷰 데이터 준비
         review_data = {
             "movieCd": movieCd,
             "rating": request.data.get("rating"),
             "comment": request.data.get("comment", ""),
         }
 
+        # 직렬화 및 저장
         serializer = ReviewSerializer(data=review_data)
         if serializer.is_valid():
             serializer.save(user=request.user, movie=movie)
