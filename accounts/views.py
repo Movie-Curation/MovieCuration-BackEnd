@@ -234,7 +234,7 @@ class ReviewCreateAPIView(APIView):
         if not movieCd:
             return Response({"error": "movieCd is required"}, status=status.HTTP_400_BAD_REQUEST)
 
-        movie = get_object_or_404(Movie, id=movieCd)
+        movie = get_object_or_404(Movie, ovieCd=movieCd)
 
         # 유저가 이미 리뷰를 작성했는지 확인
         if Review.objects.filter(user=request.user, movie=movie).exists():
@@ -304,7 +304,7 @@ class MovieReviewsAPIView(APIView):
 
         특정 영화 ID를 기반으로 해당 영화의 리뷰를 반환합니다.
         """
-        movie = get_object_or_404(Movie.objects.prefetch_related('genres'), id=movieCd)
+        movie = get_object_or_404(Movie.objects.prefetch_related('genres'), movieCd=movieCd)
         reviews = Review.objects.filter(movie=movie)
         if not reviews.exists():
             return Response({"message": "No reviews found for this movie."}, status=status.HTTP_404_NOT_FOUND)
@@ -321,7 +321,7 @@ class MovieReviewStatisticsAPIView(APIView):
 
         특정 영화에 대한 평균 평점 및 리뷰 개수를 반환합니다.
         """
-        movie = get_object_or_404(Movie.objects.prefetch_related('genres'), id=movieCd)
+        movie = get_object_or_404(Movie.objects.prefetch_related('genres'), movieCd=movieCd)
         reviews = Review.objects.filter(movie=movie)
 
         if not reviews.exists():
