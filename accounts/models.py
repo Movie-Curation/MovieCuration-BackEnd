@@ -143,14 +143,14 @@ class ReviewReport(models.Model):                #리뷰 신고 기능
 
 class Favorite(models.Model):
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="favorites")
-    movieCd = models.ForeignKey(Movie, on_delete=models.CASCADE, related_name='favorites')
+    movie = models.ForeignKey(Movie, on_delete=models.CASCADE, related_name='favorites')  # 수정
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        unique_together = ('user', 'movieCd')
+        unique_together = ('user', 'movie')  # movieCd 대신 movie로 수정
 
     def __str__(self):
-        return f"{self.user.userid} - Movie ID {self.movieCd}"
+        return f"{self.user.userid} - Movie ID {self.movie.movieCd}"  # movieCd -> movie.movieCd
     
 class Comment(models.Model):
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)  # 댓글 작성자
