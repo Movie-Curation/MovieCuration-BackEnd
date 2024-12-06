@@ -52,3 +52,4 @@ urlpatterns = [
 
 if settings.DEBUG:  # DEBUG 모드일 때만 활성화
     urlpatterns += static(settings.STATIC_URL, document_root=settings.STATICFILES_DIRS[0])
+    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

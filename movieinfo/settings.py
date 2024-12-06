@@ -13,6 +13,7 @@ https://docs.djangoproject.com/en/5.0/ref/settings/
 from pathlib import Path
 from datetime import timedelta #JWT 로그인/로그아웃기능 설정
 from decouple import config
+import os
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -87,6 +88,9 @@ MIDDLEWARE = [
     #추가
     'corsheaders.middleware.CorsMiddleware', #프론트엔드 통신
 ]
+
+MEDIA_URL = '/media/'
+MEDIA_ROOT = os.path.join(BASE_DIR, 'media')      #프로필이미지 불러오기
 
 
 #커스텀 모델 추가

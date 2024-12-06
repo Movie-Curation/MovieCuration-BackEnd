@@ -40,6 +40,8 @@ from graphviz import Digraph                                  #깃플로우 자�
 from .permissions import IsExpertUser, IsAdminUser, IsRegularUser
 from rest_framework.permissions import IsAuthenticated
 
+from rest_framework.parsers import MultiPartParser, FormParser  #프로필이미지사진
+
 
 class LogoutAPIView(APIView): 
     """
@@ -128,45 +130,37 @@ class UserProfileUpdateView(APIView):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     
 class CommentCreateAPIView(APIView):
+    """
+    특정 리뷰에 댓글 작성 API
+    """
     permission_classes = [IsAuthenticated]
-
-    
-    @swagger_auto_schema(
-        request_body=CommentSerializer,
-        responses={
-            201: "댓글 생성 성공",
-            400: "유효성 검사 실패",
-        }
-    )
 
     def post(self, request, review_id):
         """
-        리뷰에 댓글 추가.
-
-        특정 리뷰에 새로운 댓글을 작성합니다.
+        특정 리뷰에 새로운 댓글 작성
         """
-        review = get_object_or_404(Review, id=review_id)  # 리뷰가 존재하는지 확인
-        serializer = CommentSerializer(data=request.data)
+        # 리뷰 유효성 확인
+        review = get_object_or_404(Review, id=review_id)
+        data = request.data.copy()
+        data['review'] = review.id  # 리뷰 ID 추가
+        serializer = CommentSerializer(data=data)
+
+        # 유효성 검사 후 저장
         if serializer.is_valid():
-            serializer.save(user=request.user, review=review)  # 사용자와 리뷰를 설정하여 저장
+            serializer.save(user=request.user)  # 작성자 지정
             return Response(serializer.data, status=status.HTTP_201_CREATED)
+
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
 class CommentListAPIView(APIView):
-    
-    @swagger_auto_schema(
-        responses={
-            200: "댓글 목록 반환 성공",
-            404: "리뷰 없음",
-        }
-    )
+    """
+    특정 리뷰의 댓글 목록 조회 API
+    """
 
     def get(self, request, review_id):
         """
-        리뷰의 모든 댓글 조회.
-
-        특정 리뷰에 작성된 모든 댓글을 반환합니다.
+        특정 리뷰의 모든 댓글 반환
         """
         review = get_object_or_404(Review, id=review_id)
         comments = Comment.objects.filter(review=review)
@@ -175,38 +169,37 @@ class CommentListAPIView(APIView):
 
 
 class CommentUpdateAPIView(APIView):
-    
+    """
+    특정 댓글 수정 API
+    """
     permission_classes = [IsAuthenticated]
 
     def put(self, request, comment_id):
         """
-        댓글 업데이트.
-
-        댓글 ID를 기반으로 댓글의 내용을 수정합니다.
+        특정 댓글 수정
         """
-        comment = get_object_or_404(Comment, id=comment_id, user=request.user)  # 작성자가 본인인지 확인
+        comment = get_object_or_404(Comment, id=comment_id, user=request.user)  # 작성자 확인
         serializer = CommentSerializer(comment, data=request.data, partial=True)
+
+        # 유효성 검사 후 업데이트
         if serializer.is_valid():
             serializer.save()
             return Response(serializer.data, status=status.HTTP_200_OK)
+
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
 class CommentDeleteAPIView(APIView):
     """
-    특정 댓글 삭제.
-
-    댓글 ID를 기반으로 댓글을 삭제합니다.
+    특정 댓글 삭제 API
     """
     permission_classes = [IsAuthenticated]
 
     def delete(self, request, comment_id):
         """
-        특정 댓글 삭제.
-
-        댓글 ID를 기반으로 댓글을 삭제합니다.
+        특정 댓글 삭제
         """
-        comment = get_object_or_404(Comment, id=comment_id, user=request.user)  # 작성자가 본인인지 확인
+        comment = get_object_or_404(Comment, id=comment_id, user=request.user)  # 작성자 확인
         comment.delete()
         return Response({"message": "Comment deleted successfully."}, status=status.HTTP_204_NO_CONTENT)
     
@@ -908,6 +901,7 @@ class MovieListAPIView(APIView):
 
 class MovieDetailsAPIView(APIView):
     permission_classes = [AllowAny]
+    parser_classes = [MultiPartParser, FormParser]  # 이미지 업로드를 위해 필요
 
     def get(self, request, movieCd):
         """
@@ -920,7 +914,11 @@ class MovieDetailsAPIView(APIView):
         return Response(serializer.data, status=status.HTTP_200_OK)
 
 class UserProfileView(APIView):
+    """
+    사용자 프로필 조회 및 업데이트 API
+    """
     permission_classes = [IsAuthenticated]
+    parser_classes = [MultiPartParser, FormParser]  # 이미지 업로드를 위해 필요한 파서 추가
 
     def get(self, request):
         """
@@ -936,11 +934,36 @@ class UserProfileView(APIView):
             "gender": user.gender,
             "genres": list(user.genres.values("id", "name")),  # ManyToManyField 직렬화
             "nickname": user.nickname,
+            "profile_image": request.build_absolute_uri(user.profile_image.url) if user.profile_image else None,
         }
         return Response(
             {"message": "User profile retrieved successfully.", "data": user_data},
             status=status.HTTP_200_OK,
         )
+
+    def patch(self, request):
+        """
+        사용자 프로필 업데이트
+
+        로그인한 사용자의 프로필 정보를 수정합니다.
+        """
+        user = request.user
+        genres = request.data.pop("genres", None)  # genres를 별도로 처리
+        serializer = UserProfileSerializer(user, data=request.data, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+
+            # ManyToManyField 갱신
+            if genres is not None:
+                user.genres.set(genres)  # 새로운 장르 리스트로 설정
+
+            # 응답 데이터 구성
+            response_data = serializer.data
+            if user.profile_image:
+                response_data['profile_image'] = request.build_absolute_uri(user.profile_image.url)
+
+            return Response(response_data, status=status.HTTP_200_OK)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     
 def generate_diagram(request):
 

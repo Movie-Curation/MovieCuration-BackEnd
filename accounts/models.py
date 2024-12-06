@@ -6,7 +6,7 @@ from kobis.models import Movie
 from tmdb.models import Genre
 
 class UserManager(BaseUserManager):
-    def create_user(self, userid, email, name, gender, genres, nickname, password=None):
+    def create_user(self, userid, email, name, gender, genres=None, nickname=None, password=None):
         if not email:
             raise ValueError("Users must have an email address")
         if not userid:
@@ -28,13 +28,13 @@ class UserManager(BaseUserManager):
 
         return user
 
-    def create_superuser(self, userid, email, name, gender, genres, nickname, password=None):
+    def create_superuser(self, userid, email, name, gender, genres=None, nickname=None, password=None):
         user = self.create_user(
             userid=userid,
             email=email,
             name=name,
             gender=gender,
-            genres=genres,  # Superuser도 genres를 설정할 수 있음
+            genres=genres,
             nickname=nickname,
             password=password,
         )
@@ -57,8 +57,11 @@ class User(AbstractBaseUser, PermissionsMixin):
     email = models.EmailField(max_length=100, unique=True)
     name = models.CharField(max_length=50)
     gender = models.CharField(max_length=1, choices=GENDER_CHOICES)
-    genres = models.ManyToManyField(Genre, related_name="users", blank=True)  # genres 필드로 변경
+    genres = models.ManyToManyField('tmdb.Genre', related_name="users", blank=True)  # Genre 모델 연결
     nickname = models.CharField(max_length=50, unique=True)
+
+    # 추가된 필드
+    profile_image = models.ImageField(upload_to="profile_images/", null=True, blank=True)  # 프로필 이미지
 
     is_active = models.BooleanField(default=True)
     is_admin = models.BooleanField(default=False)

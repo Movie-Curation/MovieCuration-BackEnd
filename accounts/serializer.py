@@ -56,9 +56,12 @@ class UserProfileSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User
-        fields = ['name', 'email', 'nickname', 'genres']
-        extra_kwargs = {'email': {'required': False}}
-
+        fields = ['name', 'email', 'nickname', 'genres', 'profile_image']
+        extra_kwargs = {
+            'email': {'required': True, 'read_only': False},  # 이메일 수정 가능
+            'name': {'required': True},  # 이름 필수
+            'nickname': {'required': True},  # 닉네임 필수
+        }
 
 class FollowSerializer(serializers.ModelSerializer):
     """
@@ -80,6 +83,7 @@ class CommentSerializer(serializers.ModelSerializer):
     class Meta:
         model = Comment
         fields = ['id', 'user', 'review', 'content', 'created_at', 'updated_at']  # 필드 정의
+        read_only_fields = ['id', 'created_at', 'updated_at', 'user', 'review']  # 작성자와 리뷰는 읽기 전용
 
 
 class FavoriteSerializer(serializers.ModelSerializer):
