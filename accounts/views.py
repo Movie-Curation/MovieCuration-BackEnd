@@ -313,7 +313,7 @@ class MovieReviewsAPIView(APIView):
 
         특정 영화 ID를 기반으로 해당 영화의 리뷰를 반환합니다.
         """
-        movie = get_object_or_404(Movie.objects.prefetch_related('genres'), movieCd=movieCd)
+        movie = get_object_or_404, movieCd=movieCd)
         reviews = Review.objects.filter(movie=movie)
         if not reviews.exists():
             return Response({"message": "No reviews found for this movie."}, status=status.HTTP_404_NOT_FOUND)
