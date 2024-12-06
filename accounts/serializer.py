@@ -119,6 +119,13 @@ class ReviewSerializer(serializers.ModelSerializer):
     """
     리뷰 기능 직렬화 클래스
     """
+
+    # movieCd를 movie 필드와 매핑
+    movieCd = serializers.PrimaryKeyRelatedField(
+        queryset=Movie.objects.all(),  # Movie 모델에서 movieCd를 조회
+        source='movie'  # Review 모델의 ForeignKey 필드(movie)와 매핑
+    )
+
     tmdb_vote_average = serializers.FloatField(
         source="movie.tmdb.vote_average",  # TMDB 데이터를 Movie 모델에서 가져오기
         read_only=True
