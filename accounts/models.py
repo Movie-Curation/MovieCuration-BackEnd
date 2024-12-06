@@ -89,6 +89,7 @@ class Review(models.Model):
     comment = models.TextField(blank=True, null=True)  # 유저 코멘트
     created_at = models.DateTimeField(auto_now_add=True)  # 생성 시간
     updated_at = models.DateTimeField(auto_now=True)  # 수정 시간
+    is_expert_review = models.BooleanField(null=False)  # 기본값 없음
 
     def __str__(self):
         return f"Review by {self.user} on {self.movie}"
