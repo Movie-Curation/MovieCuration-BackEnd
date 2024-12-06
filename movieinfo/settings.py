@@ -53,6 +53,7 @@ INSTALLED_APPS = [
     #추가
     'rest_framework',
     'accounts',        #기본 내 프로젝트
+    'movieinfo',
     'kobis',
     'tmdb',
     'ai',

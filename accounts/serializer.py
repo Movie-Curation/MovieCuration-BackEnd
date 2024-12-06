@@ -1,6 +1,7 @@
 from rest_framework import serializers
 from django.contrib.auth.password_validation import validate_password
-from .models import User, Follow, Favorite, Review, Comment, ReviewReaction, ReviewReport, Movie
+from .models import User, Follow, Favorite, Review, Comment, ReviewReaction, ReviewReport
+from kobis.models import Movie
 from tmdb.models import Genre  # Genre 모델 임포트
 
 

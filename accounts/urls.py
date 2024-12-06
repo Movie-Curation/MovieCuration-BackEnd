@@ -1,7 +1,7 @@
 from django.urls import path
 from movieinfo.views import ReviewReportManagementAPIView #리뷰신고는 movieinfo/urls.py에서 지정했기 때문임
 from .views import PromoteToExpertAPIView,GitFlowDiagramAPIView # 관리자 좋아요100개 지정
-from .views import MovieListAPIView, MovieDetailAPIView
+from .views import MovieListAPIView, MovieDetailsAPIView
 from .views import CheckLoginAPIView
 from .views import generate_diagram
 from .views import (
@@ -74,7 +74,7 @@ urlpatterns = [
 
     #영화 정보 받기
     path('movies/', MovieListAPIView.as_view(), name='movie_list'),  # 영화 목록 조회
-    path('movies/<int:movieCd>/', MovieDetailAPIView.as_view(), name='movie_detail'),  # 특정 영화 정보 조회
+    path('movies/<int:movieCd>/', MovieDetailsAPIView.as_view(), name='movie_detail'),  # 특정 영화 정보 조회
 
     # 즐겨찾기
     path("favorites/", FavoriteAPIView.as_view(), name="favorites_list"),  # 즐겨찾기 목록
