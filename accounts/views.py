@@ -253,11 +253,12 @@ class ReviewCreateAPIView(APIView):
         if Review.objects.filter(user=request.user, movie=movie).exists():
             return Response({"error": "You have already reviewed this movie."}, status=status.HTTP_400_BAD_REQUEST)
 
-        # 리뷰 데이터 준비
+        # 기본값 추가
         review_data = {
             "movieCd": movieCd,
             "rating": request.data.get("rating"),
             "comment": request.data.get("comment", ""),
+            "is_expert_review": request.data.get("is_expert_review", False),  # 기본값 False
         }
 
         # 직렬화 및 저장
