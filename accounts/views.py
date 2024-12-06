@@ -820,20 +820,20 @@ class FavoriteAPIView(APIView):
 
             movie = favorite.movie
             data = {
-                "movieCd": movie.movieCd,  # movieCd로 반환
+                "movieCd": movie.movieCd,
                 "movie_name": movie.movieNm,
                 "vote_average": movie.vote_average,
-                "genres": [genre.name for genre in movie.genres.all()],
+                "genres": [genre.name for genre in getattr(movie, 'genres', [])],
             }
             return Response({"favorite": data}, status=status.HTTP_200_OK)
 
         favorites = Favorite.objects.filter(user=request.user).select_related('movie')
         data = [
             {
-                "movieCd": favorite.movie.movieCd,  # movieCd로 반환
+                "movieCd": favorite.movie.movieCd,
                 "movie_name": favorite.movie.movieNm,
                 "vote_average": favorite.movie.vote_average,
-                "genres": [genre.name for genre in favorite.movie.genres.all()],
+                "genres": [genre.name for genre in getattr(favorite.movie, 'genres', [])],
             }
             for favorite in favorites
         ]
@@ -845,18 +845,17 @@ class FavoriteAPIView(APIView):
             properties={
                 'movieCd': openapi.Schema(type=openapi.TYPE_INTEGER, description='영화 코드 (movieCd)'),
             },
-            required=['movieCd'],  # 필수 필드
+            required=['movieCd'],
         ),
         responses={
-            201: "Movie added to favorites successfully.",
-            400: "Movie already exists in favorites.",
+            201: openapi.Response("Movie added to favorites successfully."),
+            400: openapi.Response("Movie already exists in favorites or invalid data."),
+            404: openapi.Response("Movie not found."),
         },
     )
     def post(self, request):
         """
         영화 즐겨찾기 추가
-
-        특정 영화를 즐겨찾기에 추가합니다.
         """
         movieCd = request.data.get("movieCd")
         if not movieCd:
@@ -867,7 +866,7 @@ class FavoriteAPIView(APIView):
         except Movie.DoesNotExist:
             return Response({"error": "Movie not found"}, status=status.HTTP_404_NOT_FOUND)
 
-        if Favorite.objects.filter(user=request.user, movie=movie).exists():
+        if Favorite.objects.filter(user=request.user, movie__movieCd=movieCd).exists():
             return Response({"error": "Already added to favorites"}, status=status.HTTP_400_BAD_REQUEST)
 
         favorite = Favorite.objects.create(user=request.user, movie=movie)
@@ -880,15 +879,8 @@ class FavoriteAPIView(APIView):
     def delete(self, request, movieCd):
         """
         특정 영화 즐겨찾기 삭제
-
-        유저의 특정 영화 즐겨찾기 데이터를 삭제합니다.
         """
-        try:
-            movie = Movie.objects.get(movieCd=movieCd)
-        except Movie.DoesNotExist:
-            return Response({"error": "Movie not found"}, status=status.HTTP_404_NOT_FOUND)
-
-        favorite = Favorite.objects.filter(user=request.user, movie=movie).first()
+        favorite = Favorite.objects.filter(user=request.user, movie__movieCd=movieCd).first()
         if not favorite:
             return Response({"error": "Favorite not found"}, status=status.HTTP_404_NOT_FOUND)
 
@@ -897,7 +889,6 @@ class FavoriteAPIView(APIView):
             {"message": "Removed from favorites successfully."},
             status=status.HTTP_200_OK,
         )
-
 
 
 class MovieListAPIView(APIView):
