@@ -68,7 +68,10 @@ class LogoutAPIView(APIView):
             )
 
 
-class RegisterUserAPIView(APIView):
+class RegisterUserAPIView(APIView): 
+    parser_classes = [MultiPartParser, FormParser]  # 파일 업로드 처리를 위한 파서
+
+    
     @swagger_auto_schema(
         request_body=UserRegisterSerializer,
         responses={
@@ -313,7 +316,7 @@ class MovieReviewsAPIView(APIView):
 
         특정 영화 ID를 기반으로 해당 영화의 리뷰를 반환합니다.
         """
-        movie = get_object_or_404, movieCd=movieCd)
+        movie = get_object_or_404(Movie, movieCd=movieCd)
         reviews = Review.objects.filter(movie=movie)
         if not reviews.exists():
             return Response({"message": "No reviews found for this movie."}, status=status.HTTP_404_NOT_FOUND)
@@ -936,8 +939,38 @@ class UserProfileView(APIView):
             "nickname": user.nickname,
             "profile_image": request.build_absolute_uri(user.profile_image.url) if user.profile_image else None,
         }
+
+        # 작성한 리뷰 정보
+        reviews = Review.objects.filter(user=user)
+        review_count = reviews.count()
+        review_data = [
+            {
+                "id": review.id,
+                "movieCd": review.movie.movieCd,
+                "rating": review.rating,
+                "comment": review.comment,
+                "created_at": review.created_at,
+            }
+            for review in reviews
+        ]
+
+        # 팔로워/팔로잉 수
+        following_count = Follow.objects.filter(from_user=user).count()
+        followers_count = Follow.objects.filter(to_user=user).count()
+
+        # 전체 데이터 구성
+        data = {
+            "profile": user_data,
+            "reviews": {
+                "count": review_count,
+                "data": review_data,
+            },
+            "followers": followers_count,
+            "following": following_count,
+        }
+
         return Response(
-            {"message": "User profile retrieved successfully.", "data": user_data},
+            {"message": "User profile retrieved successfully.", "data": data},
             status=status.HTTP_200_OK,
         )
 
@@ -964,6 +997,7 @@ class UserProfileView(APIView):
 
             return Response(response_data, status=status.HTTP_200_OK)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
     
 def generate_diagram(request):
 

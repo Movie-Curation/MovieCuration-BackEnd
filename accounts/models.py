@@ -24,7 +24,7 @@ class UserManager(BaseUserManager):
 
         # ManyToManyField를 처리하기 위해 장르 추가
         if genres:
-            user.genres.set(genres)  # genres는 Genre 객체의 리스트나 QuerySet이어야 합니다.
+            user.genres.set(genres)  # genres는 Genre 객체의 리스트나 QuerySet이어야 함
 
         return user
 
@@ -61,7 +61,9 @@ class User(AbstractBaseUser, PermissionsMixin):
     nickname = models.CharField(max_length=50, unique=True)
 
     # 추가된 필드
-    profile_image = models.ImageField(upload_to="profile_images/", null=True, blank=True)  # 프로필 이미지
+    profile_image = models.ImageField(
+        upload_to="profile_images/", null=True, blank=True, help_text="사용자 프로필 이미지"
+    )  # 프로필 이미지 필드
 
     is_active = models.BooleanField(default=True)
     is_admin = models.BooleanField(default=False)

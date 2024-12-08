@@ -14,13 +14,14 @@ class UserRegisterSerializer(serializers.ModelSerializer):
     genres = serializers.PrimaryKeyRelatedField(
         queryset=Genre.objects.all(),
         many=True,
-        required=True,
+        required=False,
         help_text="유저가 선호하는 장르의 ID 리스트"
     )
+    profile_image = serializers.ImageField(required=False)  # 프로필 이미지를 선택적으로 설정
 
     class Meta:
         model = User
-        fields = ('userid', 'email', 'name', 'gender', 'genres', 'nickname', 'password', 'password2')
+        fields = ('userid', 'email', 'name', 'gender', 'genres', 'nickname', 'password', 'password2','profile_image')
 
     def validate(self, attrs):
         # 비밀번호와 확인 비밀번호가 일치하는지 검증
@@ -31,15 +32,21 @@ class UserRegisterSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         # User 생성
         genres = validated_data.pop('genres')  # genres 필드 분리
+        profile_image = validated_data.pop('profile_image', None)  # profile_image 필드 분리
         user = User.objects.create(
             userid=validated_data['userid'],
             email=validated_data['email'],
             name=validated_data['name'],
             gender=validated_data['gender'],
-            nickname=validated_data['nickname']
+            nickname=validated_data['nickname'],
+            profile_image=profile_image  # 프로필 이미지 설정
         )
+
         user.set_password(validated_data['password'])
+        if profile_image:
+            user.profile_image = profile_image  # 프로필 이미지 저장
         user.save()
+
         user.genres.set(genres)  # ManyToManyField 데이터 저장
         return user
 
@@ -53,10 +60,11 @@ class UserProfileSerializer(serializers.ModelSerializer):
         many=True,
         help_text="유저가 선호하는 장르의 ID 리스트"
     )
+    profile_image = serializers.ImageField(required=False, allow_null=True)  # 이미지 직렬화 처리
 
     class Meta:
         model = User
-        fields = ['name', 'email', 'nickname', 'genres', 'profile_image']
+        fields = fields = ['userid', 'email', 'name', 'gender', 'nickname', 'genres', 'profile_image']
         extra_kwargs = {
             'email': {'required': True, 'read_only': False},  # 이메일 수정 가능
             'name': {'required': True},  # 이름 필수
