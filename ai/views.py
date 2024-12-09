@@ -157,6 +157,8 @@ class CreateChatBox(APIView):
     '''
     채팅박스 생성하는 api
     '''
+    permission_classes = [IsAuthenticated]
+
     @swagger_auto_schema(
         operation_description="새로운 채팅방을 생성합니다.",
         request_body=openapi.Schema(
@@ -264,6 +266,8 @@ class ListChatBoxes(APIView):
     '''
     채팅박스 목록 보여주는 api
     '''
+    permission_classes = [IsAuthenticated]
+
     def get(self, request):
         user = request.user
 
