@@ -885,13 +885,19 @@ class UserProfileView(APIView):
     permission_classes = [IsAuthenticated]
     parser_classes = [MultiPartParser, FormParser]  # 이미지 업로드를 위해 필요한 파서 추가
 
-    def get(self, request):
+    def get(self, request, user_id=None):
         """
         사용자 프로필 조회
 
-        로그인한 사용자의 프로필 정보를 반환합니다.
+        - 로그인한 사용자의 프로필 정보를 반환하거나
+        - 다른 사용자의 정보를 조회합니다 (user_id로 지정).
         """
-        user = request.user
+        # user_id가 없으면 로그인한 사용자, 있으면 다른 사용자 조회
+        if user_id:
+            user = get_object_or_404(User, id=user_id)
+        else:
+            user = request.user
+
         user_data = {
             "userid": user.userid,
             "email": user.email,
@@ -941,9 +947,7 @@ class UserProfileView(APIView):
 
     def patch(self, request):
         """
-        사용자 프로필 업데이트
-
-        로그인한 사용자의 프로필 정보를 수정합니다.
+        사용자 프로필 업데이트 (자기 자신의 정보만)
         """
         user = request.user
         genres = request.data.pop("genres", None)  # genres를 별도로 처리
@@ -965,6 +969,7 @@ class UserProfileView(APIView):
                 status=status.HTTP_200_OK,
             )
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
 
 
     

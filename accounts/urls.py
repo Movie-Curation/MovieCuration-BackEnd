@@ -32,6 +32,7 @@ urlpatterns = [
     # 회원가입 및 프로필
     path('register/', RegisterUserAPIView.as_view(), name='register'),  # 회원가입
     path('profile/', UserProfileView.as_view(), name='profile'),  # 프로필 조회
+    path('profile/<int:user_id>/', UserProfileView.as_view(), name='user_profile'),
     path('profile/update/', UserProfileUpdateView.as_view(), name='profile_update'),  # 프로필 수정
 
      path('auth/check-login/', CheckLoginAPIView.as_view(), name='check-login'),   #로그인 확인
