@@ -13,6 +13,7 @@ https://docs.djangoproject.com/en/5.0/ref/settings/
 from pathlib import Path
 from datetime import timedelta #JWT 로그인/로그아웃기능 설정
 from decouple import config
+import os
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -53,12 +54,13 @@ INSTALLED_APPS = [
     #추가
     'rest_framework',
     'accounts',        #기본 내 프로젝트
+    'movieinfo',
     'kobis',
     'tmdb',
     'ai',
-    'corsheaders', #프론트엔드 통신
     'rest_framework_simplejwt.token_blacklist',   #블랙리스트 기능
     'drf_yasg',  #스웨거 사용 
+    'corsheaders',  # django-cors-headers 추가
 ]
 
 
@@ -87,11 +89,29 @@ MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware', #프론트엔드 통신
 ]
 
+MEDIA_URL = '/media/'
+MEDIA_ROOT = os.path.join(BASE_DIR, 'media')      #프로필이미지 불러오기
+
 
 #커스텀 모델 추가
 AUTH_USER_MODEL = 'accounts.User'
 
-CORS_ALLOW_ALL_ORIGINS = True  #임시적 !  모드 도메인 CORS 허용 (중요 )
+
+MIDDLEWARE.insert(0, 'corsheaders.middleware.CorsMiddleware')  # CORS 미들웨어 추가
+
+# CORS 관련 설정
+CORS_ALLOW_CREDENTIALS = True  # 인증 정보 포함 허용
+CORS_ALLOWED_ORIGINS = [
+    "http://localhost:3000",  # 프론트엔드 호스트 허용
+    "http://127.0.0.1:3000",
+]
+CORS_ALLOW_HEADERS = [
+    "content-type",
+    "authorization",
+    "x-csrftoken",
+    "x-requested-with",
+    "accept",
+]
 
 ROOT_URLCONF = 'movieinfo.urls'
 
