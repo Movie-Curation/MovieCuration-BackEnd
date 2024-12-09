@@ -691,81 +691,43 @@ class FollowAPIView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get_follow_relationship(self, from_user, to_user):
-        """
-        팔로우 관계를 확인하는 헬퍼 메서드.
-        """
         return Follow.objects.filter(from_user=from_user, to_user=to_user).first()
 
     def post(self, request, user_id):
-        """
-        특정 사용자 팔로우.
-
-        user_id에 해당하는 사용자를 팔로우합니다.
-        """
         to_user = get_object_or_404(User, id=user_id)
-
-        if self.get_follow_relationship(request.user, to_user):
-            return Response(
-                {"message": "이미 이 사용자를 팔로우하고 있습니다."},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
-        follow = Follow.objects.create(from_user=request.user, to_user=to_user)
+        follow, created = Follow.objects.get_or_create(from_user=request.user, to_user=to_user)
+        if not created:
+            return Response({"message": "이미 이 사용자를 팔로우하고 있습니다."}, status=status.HTTP_400_BAD_REQUEST)
         serializer = FollowSerializer(follow)
-        return Response(
-            {"message": "팔로우가 완료되었습니다.", "data": serializer.data},
-            status=status.HTTP_201_CREATED,
-        )
+        return Response({"message": "팔로우가 완료되었습니다.", "data": serializer.data}, status=status.HTTP_201_CREATED)
 
     def delete(self, request, user_id):
-        """
-        특정 사용자 언팔로우.
-
-        user_id에 해당하는 사용자에 대한 팔로우를 취소합니다.
-        """
         to_user = get_object_or_404(User, id=user_id)
-
         follow = self.get_follow_relationship(request.user, to_user)
         if not follow:
-            return Response(
-                {"message": "이 사용자를 팔로우하고 있지 않습니다."},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
+            return Response({"message": "이 사용자를 팔로우하고 있지 않습니다."}, status=status.HTTP_400_BAD_REQUEST)
         follow.delete()
-        return Response(
-            {"message": "언팔로우가 완료되었습니다."},
-            status=status.HTTP_200_OK,
-        )
+        return Response({"message": "언팔로우가 완료되었습니다."}, status=status.HTTP_200_OK)
 
-    def get(self, request):
-        """
-        팔로워 또는 팔로잉 목록 조회.
+    def get(self, request, user_id=None):
+        if user_id:
+            to_user = get_object_or_404(User, id=user_id)
+            follow = self.get_follow_relationship(request.user, to_user)
+            if follow:
+                return Response({"message": f"{to_user.nickname} 사용자를 팔로우하고 있습니다."}, status=status.HTTP_200_OK)
+            return Response({"message": f"{to_user.nickname} 사용자를 팔로우하지 않았습니다."}, status=status.HTTP_404_NOT_FOUND)
 
-        쿼리 파라미터 `type`에 따라 반환:
-        - `type=followers`: 사용자를 팔로우하는 목록
-        - `type=following`: 사용자가 팔로우하고 있는 목록
-        """
         follow_type = request.query_params.get("type")
         if follow_type == "followers":
-            queryset = Follow.objects.filter(to_user=request.user)
-            serializer = FollowSerializer(queryset, many=True)
-            return Response(
-                {"message": "팔로워 목록 조회 성공", "data": serializer.data},
-                status=status.HTTP_200_OK,
-            )
+            queryset = Follow.objects.filter(to_user=request.user).select_related("from_user")
         elif follow_type == "following":
-            queryset = Follow.objects.filter(from_user=request.user)
-            serializer = FollowSerializer(queryset, many=True)
-            return Response(
-                {"message": "팔로잉 목록 조회 성공", "data": serializer.data},
-                status=status.HTTP_200_OK,
-            )
+            queryset = Follow.objects.filter(from_user=request.user).select_related("to_user")
         else:
-            return Response(
-                {"error": "유효하지 않은 쿼리 파라미터입니다. 'type=followers' 또는 'type=following'을 사용하세요."},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
+            return Response({"error": "유효하지 않은 쿼리 파라미터입니다. 'type=followers' 또는 'type=following'을 사용하세요."}, status=status.HTTP_400_BAD_REQUEST)
+
+        serializer = FollowSerializer(queryset, many=True)
+        return Response({"message": f"{follow_type} 목록 조회 성공", "data": serializer.data}, status=status.HTTP_200_OK)
+
 
 
 class FollowingListView(APIView):
