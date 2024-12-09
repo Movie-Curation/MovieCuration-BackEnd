@@ -888,17 +888,12 @@ class UserProfileView(APIView):
     def get(self, request, user_id=None):
         """
         사용자 프로필 조회
-
-        - 로그인한 사용자의 프로필 정보를 반환하거나
-        - 다른 사용자의 정보를 조회합니다 (user_id로 지정).
         """
-        # user_id가 없으면 로그인한 사용자, 있으면 다른 사용자 조회
         if user_id:
             user = get_object_or_404(User, id=user_id)
         else:
             user = request.user
 
-        # 사용자 정보
         user_data = {
             "userid": user.userid,
             "email": user.email,
@@ -912,21 +907,22 @@ class UserProfileView(APIView):
             ),
         }
 
-        # 리뷰 정보
-        reviews = Review.objects.filter(user=user).select_related('movie')  # movie 정보를 함께 가져옴
-        review_count = reviews.count()
+        # 작성한 리뷰 정보
+        reviews = Review.objects.filter(user=user).select_related('movie', 'movie__tmdb')  # 'movie'와 'tmdb' 함께 가져옴
         review_data = [
             {
                 "id": review.id,
                 "movieCd": review.movie.movieCd,
-                "movieName": review.movie.movieNm,  # 영화 이름 추가
-                "poster": request.build_absolute_uri(review.movie.tmdb.vote_average.poster)  # 포스터 URL
-                if review.movie.tmdb else None,  # TMDB 데이터를 사용
+                "movieName": review.movie.movieNm,
+                "poster": (
+                    request.build_absolute_uri(review.movie.tmdb.poster_url)
+                    if review.movie.tmdb and review.movie.tmdb.poster_url else None
+                ),  # 포스터 URL 처리
                 "rating": review.rating,
                 "comment": review.comment,
                 "created_at": review.created_at,
                 "prdtYear": getattr(review.movie, 'prdtYear', 'N/A'),  # 제작 연도
-                "nationNm": getattr(review.movie, 'nationNm', 'N/A'),  # 국가 이름
+                "nationNm": getattr(review.movie, 'nationNm', 'N/A'),  # 국가명
             }
             for review in reviews
         ]
@@ -935,11 +931,10 @@ class UserProfileView(APIView):
         following_count = Follow.objects.filter(from_user=user).count()
         followers_count = Follow.objects.filter(to_user=user).count()
 
-        # 전체 데이터 구성
         data = {
             "profile": user_data,
             "reviews": {
-                "count": review_count,
+                "count": len(review_data),
                 "data": review_data,
             },
             "followers": followers_count,
@@ -950,32 +945,6 @@ class UserProfileView(APIView):
             {"message": "User profile retrieved successfully.", "data": data},
             status=status.HTTP_200_OK,
         )
-
-    def patch(self, request):
-        """
-        사용자 프로필 업데이트 (자기 자신의 정보만)
-        """
-        user = request.user
-        genres = request.data.pop("genres", None)  # genres를 별도로 처리
-        serializer = UserProfileSerializer(user, data=request.data, partial=True)
-        if serializer.is_valid():
-            serializer.save()
-
-            # ManyToManyField 갱신
-            if genres is not None:
-                user.genres.set(genres)  # 새로운 장르 리스트로 설정
-
-            # 응답 데이터 구성
-            response_data = serializer.data
-            if user.profile_image and hasattr(user.profile_image, "url"):
-                response_data["profile_image"] = request.build_absolute_uri(user.profile_image.url)
-
-            return Response(
-                {"message": "User profile updated successfully.", "data": response_data},
-                status=status.HTTP_200_OK,
-            )
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
 
 
     

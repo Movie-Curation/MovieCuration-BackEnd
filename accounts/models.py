@@ -193,8 +193,9 @@ class Follow(models.Model):
     
 class TmdbMovie(models.Model):
     id = models.IntegerField(primary_key=True, help_text="TMDB 영화 ID")
-    vote_average = models.FloatField(help_text="TMDB 영화 평점")
-    genres = models.CharField(max_length=255, help_text="TMDB 영화 장르 (콤마로 구분된 문자열)")
+    poster_url = models.URLField(null=True, blank=True, help_text="TMDB 포스터 URL")  # 포스터 URL 필드 추가
+    vote_average = models.FloatField(null=True, blank=True, help_text="TMDB 영화 평점")
+    genres = models.CharField(max_length=255, null=True, blank=True, help_text="TMDB 영화 장르 (콤마로 구분된 문자열)")
 
     def __str__(self):
         return f"TMDB Movie {self.id}"
@@ -203,6 +204,8 @@ class TmdbMovie(models.Model):
 class Movie(models.Model):
     movieCd = models.IntegerField(primary_key=True, help_text="영화 ID")
     movieNm = models.CharField(max_length=255, help_text="영화명(국문)")
+    prdtYear = models.CharField(max_length=4, null=True, blank=True, help_text="제작 연도")  # 추가
+    nationNm = models.CharField(max_length=50, null=True, blank=True, help_text="국가명")  # 추가
     tmdb = models.ForeignKey(
         TmdbMovie, on_delete=models.SET_NULL, null=True, blank=True, related_name="movies"
     )
