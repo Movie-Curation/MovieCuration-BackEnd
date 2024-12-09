@@ -899,7 +899,11 @@ class UserProfileView(APIView):
             "gender": user.gender,
             "genres": list(user.genres.values("id", "name")),  # ManyToManyField 직렬화
             "nickname": user.nickname,
-            "profile_image": request.build_absolute_uri(user.profile_image.url) if user.profile_image else None,
+            "profile_image": (
+                request.build_absolute_uri(user.profile_image.url)
+                if user.profile_image and hasattr(user.profile_image, "url")
+                else None
+            ),
         }
 
         # 작성한 리뷰 정보
@@ -954,10 +958,13 @@ class UserProfileView(APIView):
 
             # 응답 데이터 구성
             response_data = serializer.data
-            if user.profile_image:
-                response_data['profile_image'] = request.build_absolute_uri(user.profile_image.url)
+            if user.profile_image and hasattr(user.profile_image, "url"):
+                response_data["profile_image"] = request.build_absolute_uri(user.profile_image.url)
 
-            return Response(response_data, status=status.HTTP_200_OK)
+            return Response(
+                {"message": "User profile updated successfully.", "data": response_data},
+                status=status.HTTP_200_OK,
+            )
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
     
