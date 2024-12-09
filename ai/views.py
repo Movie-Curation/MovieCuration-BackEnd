@@ -281,6 +281,8 @@ class GetChatLogs(APIView):
     '''
     채팅로그 확인용
     (채팅내용은 이걸 써서 띄우면 됨)
+
+    - 'chatbox_id' 를 받아 get 합니다.
     '''
     permission_classes = [IsAuthenticated]
 
