@@ -91,7 +91,7 @@ class CommentSerializer(serializers.ModelSerializer):
     class Meta:
         model = Comment
         fields = ['id', 'user', 'review', 'content', 'created_at', 'updated_at']  # 필드 정의
-        read_only_fields = ['id', 'created_at', 'updated_at', 'user', 'review']  # 작성자와 리뷰는 읽기 전용
+        read_only_fields = ['id', 'created_at', 'updated_at', 'user']  # 작성자와 리뷰는 읽기 전용
 
 
 class FavoriteSerializer(serializers.ModelSerializer):

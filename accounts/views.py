@@ -897,7 +897,6 @@ class UserProfileView(APIView):
             "email": user.email,
             "name": user.name,
             "gender": user.gender,
-            "genres": list(user.genres.values("id", "name")),  # ManyToManyField 직렬화
             "nickname": user.nickname,
             "profile_image": (
                 request.build_absolute_uri(user.profile_image.url)
@@ -924,7 +923,7 @@ class UserProfileView(APIView):
         following_count = Follow.objects.filter(from_user=user).count()
         followers_count = Follow.objects.filter(to_user=user).count()
 
-        # 전체 데이터 구성
+        # 전체 데이터 구성 (장르 필드 제외)
         data = {
             "profile": user_data,
             "reviews": {
@@ -966,6 +965,7 @@ class UserProfileView(APIView):
                 status=status.HTTP_200_OK,
             )
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
 
     
 def generate_diagram(request):
