@@ -216,3 +216,6 @@ KOBIS_API_BASE_URL = 'http://www.kobis.or.kr/kobisopenapi/webservice/rest'
 # TMDB API 설정
 TMDB_BEARER_TOKEN = config('TMDB_BEARER_TOKEN')
 TMDB_API_BASE_URL = 'https://api.themoviedb.org/3'
+
+# openai API 설정
+OPENAI_API_KEY = config('OPENAI_API_KEY')
