@@ -1,7 +1,8 @@
 from django.urls import path
 from movieinfo.views import ReviewReportManagementAPIView #리뷰신고는 movieinfo/urls.py에서 지정했기 때문임
 from .views import PromoteToExpertAPIView,GitFlowDiagramAPIView # 관리자 좋아요100개 지정
-from .views import MovieListAPIView, MovieDetailAPIView
+from .views import MovieListAPIView, MovieDetailsAPIView
+from .views import CheckLoginAPIView
 from .views import generate_diagram
 from .views import (
     RegisterUserAPIView, 
@@ -31,7 +32,10 @@ urlpatterns = [
     # 회원가입 및 프로필
     path('register/', RegisterUserAPIView.as_view(), name='register'),  # 회원가입
     path('profile/', UserProfileView.as_view(), name='profile'),  # 프로필 조회
+    path('profile/<int:user_id>/', UserProfileView.as_view(), name='user_profile'),
     path('profile/update/', UserProfileUpdateView.as_view(), name='profile_update'),  # 프로필 수정
+
+     path('auth/check-login/', CheckLoginAPIView.as_view(), name='check-login'),   #로그인 확인
 
     # 로그아웃
     path('logout/', LogoutAPIView.as_view(), name='logout'),  # 로그아웃
@@ -40,9 +44,9 @@ urlpatterns = [
     path('reviews/', ReviewCreateAPIView.as_view(), name='review_create'),  # 리뷰 작성
     path('reviews/<int:review_id>/', ReviewUpdateAPIView.as_view(), name='review_update'),  # 리뷰 수정
     path('reviews/<int:review_id>/delete/', ReviewDeleteAPIView.as_view(), name='review_delete'),  # 리뷰 삭제
-    path('reviews/movie/<int:movie_id>/', MovieReviewsAPIView.as_view(), name='movie_reviews'),  # 특정 영화 리뷰 조회
+    path('reviews/movie/<int:movieCd>/', MovieReviewsAPIView.as_view(), name='movie_reviews'),  # 특정 영화 리뷰 조회
     path('reviews/user/', UserReviewsAPIView.as_view(), name='user_reviews'),  # 사용자 리뷰 조회
-    path('reviews/statistics/<int:movie_id>/', MovieReviewStatisticsAPIView.as_view(), name='movie_review_statistics'),  # 영화 리뷰 통계
+    path('reviews/statistics/<int:movieCd>/', MovieReviewStatisticsAPIView.as_view(), name='movie_review_statistics'),  # 영화 리뷰 통계
     path('reviews/sorted/', ReviewListSortedAPIView.as_view(), name='review_list_sorted'),  # 리뷰 정렬
     path('reviews/<int:review_id>/reaction/', ReviewReactionAPIView.as_view(), name='review_reaction'),  # 리뷰 좋아요/싫어요
 
@@ -71,11 +75,11 @@ urlpatterns = [
 
     #영화 정보 받기
     path('movies/', MovieListAPIView.as_view(), name='movie_list'),  # 영화 목록 조회
-    path('movies/<int:movie_id>/', MovieDetailAPIView.as_view(), name='movie_detail'),  # 특정 영화 정보 조회
+    path('movies/<int:movieCd>/', MovieDetailsAPIView.as_view(), name='movie_detail'),  # 특정 영화 정보 조회
 
     # 즐겨찾기
     path("favorites/", FavoriteAPIView.as_view(), name="favorites_list"),  # 즐겨찾기 목록
-    path("favorites/<int:movie_id>/", FavoriteAPIView.as_view(), name="favorites_detail"),  # 특정 영화 즐겨찾기
+    path("favorites/<int:movieCd>/", FavoriteAPIView.as_view(), name="favorites_detail"),  # 특정 영화 즐겨찾기
 
     # 팔로우
     path('follow/<int:user_id>/', FollowAPIView.as_view(), name='follow')  # 팔로우/언팔로우

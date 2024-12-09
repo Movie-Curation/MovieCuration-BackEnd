@@ -209,10 +209,13 @@ class MovieDetailAPIView(APIView):
     '''
     def get(self, request, movieCd):
         try:
+            movieCd = int(movieCd)  # movieCd를 정수로 변환
             kobis_movie = Movie.objects.get(movieCd=movieCd)
             tmdb_movie = kobis_movie.tmdb_movie
             serializer = MovieDetailSerializer({'kobis': kobis_movie, 'tmdb': tmdb_movie})
             return Response(serializer.data, status=status.HTTP_200_OK)
+        except ValueError:
+            return Response({'error': 'Invalid movieCd format'}, status=status.HTTP_400_BAD_REQUEST)
         except Movie.DoesNotExist:
             return Response({'error': 'Movie not found'}, status=status.HTTP_404_NOT_FOUND)
 
