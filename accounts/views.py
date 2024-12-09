@@ -898,6 +898,7 @@ class UserProfileView(APIView):
         else:
             user = request.user
 
+        # 사용자 정보
         user_data = {
             "userid": user.userid,
             "email": user.email,
@@ -911,16 +912,21 @@ class UserProfileView(APIView):
             ),
         }
 
-        # 작성한 리뷰 정보
-        reviews = Review.objects.filter(user=user)
+        # 리뷰 정보
+        reviews = Review.objects.filter(user=user).select_related('movie')  # movie 정보를 함께 가져옴
         review_count = reviews.count()
         review_data = [
             {
                 "id": review.id,
                 "movieCd": review.movie.movieCd,
+                "movieName": review.movie.movieNm,  # 영화 이름 추가
+                "poster": request.build_absolute_uri(review.movie.tmdb.vote_average.poster)  # 포스터 URL
+                if review.movie.tmdb else None,  # TMDB 데이터를 사용
                 "rating": review.rating,
                 "comment": review.comment,
                 "created_at": review.created_at,
+                "prdtYear": getattr(review.movie, 'prdtYear', 'N/A'),  # 제작 연도
+                "nationNm": getattr(review.movie, 'nationNm', 'N/A'),  # 국가 이름
             }
             for review in reviews
         ]
@@ -929,7 +935,7 @@ class UserProfileView(APIView):
         following_count = Follow.objects.filter(from_user=user).count()
         followers_count = Follow.objects.filter(to_user=user).count()
 
-        # 전체 데이터 구성 (장르 필드 제외)
+        # 전체 데이터 구성
         data = {
             "profile": user_data,
             "reviews": {

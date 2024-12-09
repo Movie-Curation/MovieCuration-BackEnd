@@ -110,6 +110,7 @@ CORS_ALLOW_HEADERS = [
     "authorization",
     "x-csrftoken",
     "x-requested-with",
+    "accept",
 ]
 
 ROOT_URLCONF = 'movieinfo.urls'
