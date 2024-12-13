@@ -47,3 +47,6 @@
 
 ## ⏰ 제작 기간
 * 2024.11.01 ~ 2024.12.13 (6주)
+
+## 프론트엔드 Github
++ https://github.com/Movie-Curation/MovieCuration-FrontEnd
